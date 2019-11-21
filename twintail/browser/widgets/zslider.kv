@@ -1,0 +1,24 @@
+<ZSlider>:
+    slider: slider
+    zlabel: zlabel
+
+    Label:
+        id: zlabel
+        size_hint_x: 0.1
+        text: f"z: {int(root.slider.value)}"
+
+    Slider:
+        id: slider
+        min: 0
+        max: 0
+        value: 0
+        on_value: root.on_slide_val_change(self, self.value)
+
+    Label:
+        size_hint_x: 0.1
+        text: "Projection"
+
+    CheckBox:
+        size_hint_x: 0.1
+        active: root.projection
+        on_active: root.on_checkbox_click(self, self.active)

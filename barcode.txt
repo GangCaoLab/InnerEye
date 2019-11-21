@@ -1,0 +1,3 @@
+gene1	AA
+gene2	ATTT
+gene3	GGTTCG

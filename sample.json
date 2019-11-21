@@ -1,0 +1,16 @@
+{
+    "sample1": {
+        "fov1": [
+            "example.lif::0",
+            "example.lif::1",
+            "example.lif::2",
+            "example.lif::3"
+        ],
+        "fov2": [
+            "example2.lif::0",
+            "example2.lif::1",
+            "example2.lif::2",
+            "example2.lif::3"
+        ]
+    }
+}

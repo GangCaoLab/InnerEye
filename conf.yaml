@@ -1,0 +1,36 @@
+global:
+  working_dir: "./"
+  log_level: "INFO"
+
+data:
+  input: "sample.json"
+  barcode: "barcode.txt"
+  channels_per_cycle: 2
+  channels:
+    - "A"
+    - "G"
+    - "C"
+    - "T"
+    - "DAPI"
+
+registration:
+  ref_cycle: -1
+  method: "orb-match"
+  channel: "mean(A, G, C, T, DAPI)"
+  z:
+    scale: 1
+    method: "mean"
+
+decode:
+  voxel:
+    method: "otsu"
+  peak:
+    method: "lmp"
+    max_filter_size: 5
+    percentile_filter_size: 10
+
+cell_detect:
+  method: "watershed"
+  channel: "mean(A, G, C, T, DAPI)"
+
+
