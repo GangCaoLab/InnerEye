@@ -26,16 +26,16 @@ class OpenedH5(object):
         with h5py.File(fpath, 'r') as f:
             dsets = list_datasets(fpath)
             first_dst = f[dsets[0]]
-            imgs = [ first_dst[:, :, 0, 0] ]
+            imgs = [[ first_dst[:, :, 0, 0]  ]]
             wgt.draw2d(imgs)
-            wgt.ids['z_slider'].slider.max = first_dst.shape[2]
-        wgt.ids['view_tab'].update_cycles([0, 1, 2, 3])
-        wgt.ids['view_tab'].update_channels([0, 1, 2, 3, 4])
+            wgt.ids['z_slider'].slider.max = first_dst.shape[2] - 1
+            wgt.ids['view_tab'].update_cycles(list(range(len(dsets))))
+            wgt.ids['view_tab'].update_channels(list(range(first_dst.shape[3])))
 
 
 class LoadMixin():
 
-    _opened = OpenedH5()
+    opened = OpenedH5()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,7 +50,7 @@ class LoadMixin():
         if osp.splitext(fpath)[1] not in {'.h5', '.hdf5'}:
             log.warning(f"Unsupported format: {fpath}")
             return
-        self._opened = fpath
+        self.opened = fpath
         if hasattr(self, '_popup'):
             self.dismiss_popup()
 

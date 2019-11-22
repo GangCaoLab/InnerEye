@@ -201,6 +201,10 @@ class MatplotNavToolbar(BoxLayout):
             self._navtoolbar.__init__(canvas, self)
             self._navtoolbar.figure_widget = fig
 
+    def key_up(self):
+        for btn in ['pan', 'zoom', 'link']:
+            getattr(self, btn+'_btn').state = 'normal'
+
 
 class _NavigationToolbar(NavigationToolbar2):
     figure_widget = None
@@ -234,8 +238,9 @@ class _NavigationToolbar(NavigationToolbar2):
         self._link = False
         axes = self.figure_widget.figure.axes
         if len(axes) > 1:
-            axes[0].get_shared_x_axes().remove(*axes[1:])
-            axes[0].get_shared_y_axes().remove(*axes[1:])
+            for ax in axes[1:]:
+                axes[0].get_shared_x_axes().remove(ax)
+                axes[0].get_shared_y_axes().remove(ax)
 
     def press_save(self, *args):
         dialog = SaveDialog(save=self.save, cancel=self.dismiss_popup,
