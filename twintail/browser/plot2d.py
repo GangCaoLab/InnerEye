@@ -76,14 +76,14 @@ class Plot2DMixin():
     def _update(self, fig):
         self.figure_wgt.figure = fig
 
-    @lru_cache(2)
+    @lru_cache(4)
     def _fetch_cycle(self, cycle_idx):
         with h5py.File(self.opened, 'r') as f:
             cycles = sorted(list(f))
             img4d = f[cycles[cycle_idx]].value
         return img4d
 
-    @lru_cache(10)
+    @lru_cache(20)
     def _fetch_imgs(self, info):
         """
         Fetch 2D images.
@@ -126,7 +126,6 @@ class Plot2DMixin():
         axes = axes if isinstance(axes, Iterable) else [axes]
         axes = list(flatten(axes))
         for i, img in enumerate(flatten(imgs)):
-            print(axes)
             axes[i].imshow(img)
         self.figure_wgt.figure.canvas.draw()
 

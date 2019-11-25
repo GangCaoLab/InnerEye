@@ -20,7 +20,23 @@ def write_array(uri:str, arr:np.ndarray):
 def read_array(uri:str) -> np.ndarray:
     path, inner_path = parse_uri(uri)
     with h5py.File(path, 'r') as f:
-        return f[inner_path].value
+        return f[inner_path][()]
+
+
+def read_cycles(path: str) -> t.List[np.array]:
+    cycles = []
+    with h5py.File(path, 'r') as f:
+        arr_names = sorted(filter(lambda a: a.startswith('cycle_'), f))
+        for n in arr_names:
+            arr = f[n][()]
+            cycles.append(arr)
+    return cycles
+
+
+def write_cycles(cycles_arr: t.List[np.ndarray], path:str):
+    with h5py.File(path, 'w') as f:
+        for idx, arr in enumerate(cycles_arr):
+            f.create_dataset(f"cycle_{idx}", data=arr)
 
 
 def list_datasets(uri:str) -> t.List[str]:

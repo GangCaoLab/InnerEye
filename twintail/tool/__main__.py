@@ -10,6 +10,8 @@ class Tools:
         self.gen = gen
         from .extract_img import extract_samples
         self.extract_samples = extract_samples
+        from .registration import registration
+        self.registration = registration
 
 
 import fire

@@ -20,3 +20,16 @@ def set_logging_fmt(log_level=10, log_file=None):
         log.addHandler(f_handler)
     log.setLevel(log_level)
 
+
+def print_arguments(print_func=print):
+    import inspect
+    f_back = inspect.currentframe().f_back
+    func_name = f_back.f_code.co_name
+    func = f_back.f_globals[func_name]
+    locals_ = f_back.f_locals
+    sig = inspect.signature(func)
+    msg = f"Do {func.__name__} with arguments:"
+    for name in sig.parameters:
+        msg += f"\n\t{name} = {locals_[name]}"
+    print_func(msg)
+

@@ -142,6 +142,10 @@ class _FigureCanvas(FigureCanvasAgg):
     def __init__(self, figure, widget, *args, **kwargs):
         self.widget = widget
         super(_FigureCanvas, self).__init__(figure, *args, **kwargs)
+        super().mpl_connect('button_press_event', self.onclick)
+
+    def onclick(self, event):
+        print(event, event.inaxes)
 
     def draw(self):
         """
