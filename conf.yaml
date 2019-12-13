@@ -16,13 +16,16 @@ data:
 registration:
   ref_cycle: -1
   channel: "mean"
-  z: 'ignore'
+  z: 'slide'
   method:
     name: "orb-match"
     max_features: 500
     good_match_percent: 0.15
 
 signal_call:
+  pre_process:
+    adjust_gamma:
+      gamma: 0.5
   #method:
   #  name: "percentile-ratio"
   #  max_filter_size: 5
