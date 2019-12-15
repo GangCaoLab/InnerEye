@@ -75,6 +75,7 @@ def extract_samples(json_path:str, dst_dir:str):
                 p.start()
                 p.join()
 
+
 if __name__ == "__main__":
     from twintail.utils.log import set_global_logging
     set_global_logging()

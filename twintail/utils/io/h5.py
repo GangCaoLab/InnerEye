@@ -52,6 +52,25 @@ def read_cycles(path: str) -> t.List[np.array]:
     return cycles
 
 
-def write_spots(path, spots: np.ndarray):
-    """Write coordinates of all coordinate."""
-    pass
+def write_spots(path: str, spots: t.List[t.List[np.ndarray]]):
+    """Write coordinates of all spots."""
+    with h5py.File(path, 'w') as f:
+        for ixcy, chs in enumerate(spots):
+            grp = f.create_group(f"cycle_{ixcy}")
+            for ixch, arr in enumerate(chs):
+                grp.create_dataset(f"channel_{ixch}", data=arr)
+
+
+def read_spots(path: str) -> t.List[t.List[np.ndarray]]:
+    """Load coordinates of all spots."""
+    spots = []
+    with h5py.File(path, 'r') as f:
+        cycle_names = sorted(filter(lambda a: a.startswith('cycle_'), f))
+        for cycle in cycle_names:
+            spots.append([])
+            grp = f[cycle]
+            channel_names = sorted(filter(lambda a: a.startswith('cycle_'), f))
+            for channel in channel_names:
+                arr = grp[channel][()]
+                spots[-1].append(arr)
+    return spots

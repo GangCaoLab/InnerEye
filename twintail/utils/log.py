@@ -46,16 +46,12 @@ def print_arguments(print_func: t.Callable = print):
     :return:
     """
     import inspect
-    f_back = inspect.currentframe().f_back
-    func_name = f_back.f_code.co_name
-    locals_ = f_back.f_locals
-    if 'self' in locals_:
-        func = getattr(locals_['self'], func_name)
-    else:
-        func = f_back.f_globals[func_name]
+    from .misc import caller_caller
+    func, locals_ = caller_caller()
     sig = inspect.signature(func)
 
-    is_init = ('self' in locals_) and (func_name == '__init__')
+    # compose header
+    is_init = ('self' in locals_) and (func.__name__ == '__init__')
     if is_init and sig.parameters:
         cls_name = type(locals_['self']).__name__
         head = f"Initialize {cls_name} with arguments:"

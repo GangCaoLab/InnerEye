@@ -1,5 +1,6 @@
 from twintail.utils.log import set_global_logging
 
+
 class Tools:
     def __init__(self, log_level=20, log_file=None):
         set_global_logging(
@@ -12,8 +13,8 @@ class Tools:
         self.extract_samples = extract_samples
         from .registration import registration
         self.registration = registration
-        from .call_spots import SignalCall
-        self.signal_call = SignalCall
+        from .call_spots import CallSpots
+        self.call_spots = CallSpots
         from .preprocessing import PreProcessing
         self.pre_proc = PreProcessing
 

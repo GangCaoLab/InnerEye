@@ -1,149 +1,113 @@
-from itertools import combinations
 import typing as t
-
 import numpy as np
-import scipy.ndimage as ndi
 from pathos.multiprocessing import ProcessingPool as Pool
-
-from twintail.utils.io.h5 import read_cycles, write_cycles
 from twintail.utils.log import print_arguments
-from twintail.utils.img import cc_sub, slide_over_ch_z
-from twintail.utils import flatten
+from twintail.utils.spots.call import lmpn, blob, tophat_extrema
+from twintail.utils.spots.cluster import merge_close_points_3d
+from twintail.utils.img import slide_over_z, slide_over_ch
+from twintail.utils.misc import local_arguments
+from twintail.utils.io.h5 import write_spots
+from .base import ChainTool
+
 
 from logging import getLogger
 log = getLogger(__file__)
 
 
-class SignalCall(object):
-    """Signal points call."""
+def func_for_slide(func: t.Callable, args: t.Tuple) -> t.Callable:
+    """Construct the function for slide over whole image."""
+    def wrap(img: np.ndarray,
+             idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
+        spots = func(img, *args)
+        if spots.shape[1] <= 2:  # add z-axis to coordinates
+            z = np.full((spots.shape[0], 1), idx[1])
+            spots = np.c_[spots, z]
+        return spots
+    return wrap
+
+
+def call_spots(func: t.Callable,
+               cycles: t.List[np.ndarray],
+               z_mode: str,
+               n_workers: int) -> t.List[t.List[np.ndarray]]:
+    if z_mode == 'slide':
+        spots = [slide_over_z(img, func, n_workers, stack_z=False, stack_ch=False)
+                 for img in cycles]
+        spots = [[np.vstack(ch) for ch in cy] for cy in spots]
+    else:
+        spots = [slide_over_ch(img, func, n_workers, stack=False)
+                 for img in cycles]
+    return spots
+
+
+class CallSpots(ChainTool):
+    """Find spots(signal) within image. """
     def __init__(self,
-                 z: str = 'slide',
-                 signal_channels: t.List[int] = (0, 1, 2, 3),
-                 channels_per_cycle: int = 2,
+                 z_mode: str = 'slide',
                  n_workers: int = 1):
         print_arguments(log.info)
-        assert z in {'slide'}
-        self.signal_channels = list(signal_channels)
-        self.channels_per_cycle = channels_per_cycle
+        assert z_mode in {'slide', 'whole'}
+        self.z_mode = z_mode
         self.n_workers = n_workers
+        self.cycles = None
+        self.spots = None
 
-    def read(self, path: str):
+    def write(self, path: str):
+        """Write spot coordinates to disk"""
         print_arguments(log.info)
-        self.cycles = read_cycles(path)
-        self.cycles = [arr[:, :, :, self.signal_channels] for arr in self.cycles]
+        write_spots(path, self.spots)
         return self
 
-    def candidate(self, percentile=80, size=11, q=0.90, min_size=3, min_neighbors=3):
+    def lmpn(self,
+             maximum_filter_size=5,
+             percentile_filter_size=11,
+             percentile=80.0,
+             neighbor_size=3,
+             neighbor_thresh=0.5):
+        """Call spots using LMPN method."""
         print_arguments(log.info)
-        from skimage.morphology import remove_small_objects
-
-        selm = np.ones((3,3))
-
-        def process(im, *args):
-            p = ndi.percentile_filter(im, percentile, size)
-            t = np.quantile(im, q)
-            sig = (im > p) & (im > t)
-            f_sig = remove_small_objects(sig, min_size=min_size, connectivity=1)
-            f_sig = f_sig & (ndi.convolve(f_sig.astype(np.int), selm) > min_neighbors)
-            f_sig = remove_small_objects(f_sig, min_size=min_size, connectivity=1)
-            return f_sig
-
-        self.signals = []
-        for arr_ in map(lambda arr: slide_over_ch_z(arr, process, self.n_workers), self.cycles):
-            self.signals.append(arr_)
-
+        args = local_arguments(keywords=False)
+        func = func_for_slide(lmpn.call_spots, args)
+        self.spots = call_spots(func, self.cycles, self.z_mode, self.n_workers)
         return self
 
-    @property
-    def channel_combinations(self):
-        combs = list(combinations(self.signal_channels, self.channels_per_cycle))
-        return combs
-
-    def channel_merge(self):
+    def blob(self,
+             p=0.9,
+             percentile_size=15,
+             q=0.9,
+             min_obj_size=3):
+        """Call spots using blob method."""
         print_arguments(log.info)
-        merged = []
-        for ix_cy, arr in enumerate(self.signals):
-            chs = []
-            for ix1, ix2 in self.channel_combinations:
-                a = arr[:, :, :, ix1]
-                b = arr[:, :, :, ix2]
-                ab = a & b
-                chs.append(ab)
-            merged.append(np.stack(chs, axis=-1))
-        self.merged = merged
+        args = local_arguments(keywords=False)
+        func = func_for_slide(blob.call_spots, args)
+        self.spots = call_spots(func, self.cycles, self.z_mode, self.n_workers)
         return self
 
-    def call_dangling(self):
-        """Call the signals of dangling(AA TT CC GG..)"""
+    def tophat_extrema(self,
+                       h=0.1,
+                       q=None):
+        """Call spots using tophat-filter + h_maxima method."""
         print_arguments(log.info)
-        combs = self.channel_combinations
+        args = local_arguments(keywords=False)
+        func = func_for_slide(tophat_extrema.call_spots, args)
+        self.spots = call_spots(func, self.cycles, self.z_mode, self.n_workers)
+        return self
 
-        def process_ch(args):
-            arr, a, bs = args
-            for bix in bs:
-                b = arr[:, :, :, bix]
-                zs = []
-                for ix_z in range(b.shape[-1]):
-                    a_ = a[:,:,ix_z]
-                    b_ = b[:,:,ix_z]
-                    a_sub_b = cc_sub(a_, b_)
-                    zs.append(a_sub_b)
-                a = np.stack(zs, axis=-1)
-            return a
-
-        def gen_args(arr):
-            for ix in self.signal_channels:
-                a = self.signals[ix_cy][:, :, :, ix]
-                bs = [i for i, t in enumerate(combs) if ix in t]
-                yield arr, a, bs
-
+    def merge_neighboring(self,
+                          min_dist=2.0,
+                          z_scale=1.0):
+        """Merge neighboring points."""
+        print_arguments(log.info)
         pool = Pool(ncpus=self.n_workers)
-        map_ = pool.imap if self.n_workers > 1 else map
-
-        for ix_cy, arr in enumerate(self.merged):
-            chs = []
-            for arr_ in map_(process_ch, gen_args(arr)):
-                chs.append(arr_)
-            danglings = np.stack(chs, axis=-1)
-            self.merged[ix_cy] = np.c_[arr, danglings]
+        map_ = map if self.n_workers <= 1 else pool.imap
+        idx = [(ixcy, ixch)
+               for ixcy in range(len(self.spots))
+               for ixch in range(len(self.spots[ixcy]))]
+        coords = map_(lambda t: self.spots[t[0]][t[1]], idx)
+        func = lambda c: merge_close_points_3d(c, min_dist, z_scale, self.z_mode)
+        spots = [[] for _ in range(len(self.spots))]
+        for (ixcy, ixch), im in zip(idx, map_(func, coords)):
+            spots[ixcy].append(im)
+        self.spots = spots
         return self
 
-    def write_merged(self, path):
-        print_arguments(log.info)
-        write_cycles(path, self.merged)
-        return self
-
-    def call_merged_centroid(self):
-        print_arguments(log.info)
-        from skimage.measure import label, regionprops
-
-        def process(im, ix):
-            ix_z, ix_ch = ix
-            l = label(im, connectivity=2)
-            centroids = []
-            for r in regionprops(l):
-                y, x = r.centroid
-                y, x = int(y), int(x)
-                centroids.append([y, x, ix_z, ix_ch])
-            centroids = np.array(centroids)
-            return centroids
-
-        self.points = []
-        for ix_cy, arr in enumerate(self.merged):
-            chs = slide_over_ch_z(
-                arr, process, n_workers=self.n_workers, stack=False)
-            centroids = np.vstack(list(filter(lambda a: a.shape[0] > 0, flatten(chs))))
-            self.points.append(centroids)
-        return self
-
-    def write_points(self, path):
-        print_arguments(log.info)
-        write_cycles(path, self.points)
-        return self
-
-
-if __name__ == "__main__":
-    from twintail.utils.log import set_global_logging
-    set_global_logging()
-    import fire
-    fire.Fire(SignalCall)

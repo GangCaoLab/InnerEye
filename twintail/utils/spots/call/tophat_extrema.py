@@ -9,6 +9,6 @@ def call_spots(roi: np.ndarray,
     t = white_tophat(roi)
     if q:
         h = np.quantile(t, q)
-    spots = extrema.h_maxima(t, h)
+    spots = np.c_[np.where(extrema.h_maxima(t, h))]
     return spots
 
