@@ -3,10 +3,10 @@ import numpy as np
 from pathos.multiprocessing import ProcessingPool as Pool
 from twintail.utils.log import print_arguments
 from twintail.utils.spots.call import lmpn, blob, tophat_extrema
-from twintail.utils.spots.cluster import merge_close_points_3d
+from twintail.utils.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
 from twintail.utils.img import slide_over_z, slide_over_ch
 from twintail.utils.misc import local_arguments
-from twintail.utils.io.h5 import write_spots, write_meta
+from twintail.utils.io.h5 import write_spots
 from .base import ChainTool
 
 
@@ -97,16 +97,23 @@ class CallSpots(ChainTool):
 
     def merge_neighboring(self,
                           min_dist=2.0,
-                          z_scale=1.0):
+                          method="dilation"):
         """Merge neighboring points."""
         print_arguments(log.info)
+        assert method in {'dbscan', 'dilation'}
+        if method == 'dbscan':
+            merge_func = merge_close_points_3d
+        else:
+            min_dist = min_dist // 2
+            merge_func = merge_close_points_3d_cc
+
         pool = Pool(ncpus=self.n_workers)
         map_ = map if self.n_workers <= 1 else pool.imap
         idx = [(ixcy, ixch)
                for ixcy in range(len(self.spots))
                for ixch in range(len(self.spots[ixcy]))]
         coords = map_(lambda t: self.spots[t[0]][t[1]], idx)
-        func = lambda c: merge_close_points_3d(c, min_dist, z_scale, self.z_mode)
+        func = lambda c: merge_func(c, min_dist, self.z_mode)
         spots = [[] for _ in range(len(self.spots))]
         for (ixcy, ixch), im in zip(idx, map_(func, coords)):
             spots[ixcy].append(im)
