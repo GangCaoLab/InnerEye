@@ -2,18 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7048b36d-0e85-4b0b-924c-4c6c8d9958b9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/twintail/tool/base.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/twintail/utils/misc.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/twintail/tool/decode.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/tool/__main__.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/tool/__main__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/twintail/tool/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/tool/base.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/twintail/tool/call_spots.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/tool/call_spots.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/tool/extract_img.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/tool/extract_img.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/tool/preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/tool/preprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/utils/img.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/img.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/twintail/utils/io/h5.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/io/h5.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/utils/log.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/log.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/twintail/utils/spots/call/tophat_extrema.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/spots/call/tophat_extrema.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/twintail/utils/spots/cluster.py" beforeDir="false" afterPath="$PROJECT_DIR$/twintail/utils/spots/cluster.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -23,17 +16,50 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.4819188">
+    <splitter split-orientation="horizontal" split-proportion="0.48560885">
       <split-first>
         <leaf>
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/twintail/tool/call_spots.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="362">
-                  <caret line="90" column="46" lean-forward="true" selection-start-line="90" selection-start-column="46" selection-end-line="90" selection-end-column="46" />
+                <state relative-caret-position="221">
+                  <caret line="61" lean-forward="true" selection-start-line="61" selection-end-line="61" />
                   <folding>
                     <element signature="e#0#6#0" expanded="true" />
                   </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/twintail/tool/decode.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="306">
+                  <caret line="18" column="29" selection-start-line="18" selection-start-column="29" selection-end-line="18" selection-end-column="29" />
+                  <folding>
+                    <element signature="e#0#27#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/twintail/tool/extract_img.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="391">
+                  <caret line="23" column="23" selection-start-line="23" selection-start-column="23" selection-end-line="23" selection-end-column="23" />
+                  <folding>
+                    <element signature="e#0#9#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/try/exp1.json">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="493">
+                  <caret line="29" column="63" selection-start-line="29" selection-start-column="63" selection-end-line="29" selection-end-column="63" />
                 </state>
               </provider>
             </entry>
@@ -87,10 +113,22 @@
           <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/twintail/utils/spots/cluster.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="306">
-                  <caret line="27" column="23" selection-start-line="27" selection-start-column="23" selection-end-line="27" selection-end-column="23" />
+                <state relative-caret-position="646">
+                  <caret line="47" column="20" selection-start-line="47" selection-start-column="20" selection-end-line="47" selection-end-column="20" />
                   <folding>
                     <element signature="e#0#18#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/twintail/tool/base.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="306">
+                  <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+                  <folding>
+                    <element signature="e#0#46#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
@@ -99,8 +137,8 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/twintail/utils/io/h5.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="328">
-                  <caret line="51" column="16" selection-start-line="51" selection-start-column="16" selection-end-line="51" selection-end-column="16" />
+                <state relative-caret-position="481">
+                  <caret line="64" lean-forward="true" selection-start-line="64" selection-end-line="64" />
                   <folding>
                     <element signature="e#0#18#0" expanded="true" />
                   </folding>
@@ -177,7 +215,6 @@
         <option value="$PROJECT_DIR$/twintail/tool/__init__.py" />
         <option value="$PROJECT_DIR$/twintail/tool/signal_call.py" />
         <option value="$PROJECT_DIR$/twintail/tool/extract_img.py" />
-        <option value="$PROJECT_DIR$/twintail/tool/base.py" />
         <option value="$PROJECT_DIR$/twintail/utils/__init__.py" />
         <option value="$PROJECT_DIR$/twintail/tool/preprocessing.py" />
         <option value="$PROJECT_DIR$/twintail/tool/__main__.py" />
@@ -185,9 +222,12 @@
         <option value="$PROJECT_DIR$/twintail/utils/log.py" />
         <option value="$PROJECT_DIR$/twintail/utils/img.py" />
         <option value="$PROJECT_DIR$/twintail/utils/spots/call/tophat_extrema.py" />
+        <option value="$PROJECT_DIR$/try/exp1.json" />
         <option value="$PROJECT_DIR$/twintail/utils/spots/cluster.py" />
-        <option value="$PROJECT_DIR$/twintail/tool/call_spots.py" />
+        <option value="$PROJECT_DIR$/twintail/tool/base.py" />
         <option value="$PROJECT_DIR$/twintail/utils/io/h5.py" />
+        <option value="$PROJECT_DIR$/twintail/tool/decode.py" />
+        <option value="$PROJECT_DIR$/twintail/tool/call_spots.py" />
       </list>
     </option>
   </component>
@@ -208,6 +248,11 @@
             <path>
               <item name="in-situ-seq" type="b2602c69:ProjectViewProjectNode" />
               <item name="in-situ-seq" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="in-situ-seq" type="b2602c69:ProjectViewProjectNode" />
+              <item name="in-situ-seq" type="462c0819:PsiDirectoryNode" />
+              <item name="try" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="in-situ-seq" type="b2602c69:ProjectViewProjectNode" />
@@ -239,14 +284,6 @@
               <item name="twintail" type="462c0819:PsiDirectoryNode" />
               <item name="utils" type="462c0819:PsiDirectoryNode" />
               <item name="spots" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="in-situ-seq" type="b2602c69:ProjectViewProjectNode" />
-              <item name="in-situ-seq" type="462c0819:PsiDirectoryNode" />
-              <item name="twintail" type="462c0819:PsiDirectoryNode" />
-              <item name="utils" type="462c0819:PsiDirectoryNode" />
-              <item name="spots" type="462c0819:PsiDirectoryNode" />
-              <item name="call" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -299,12 +336,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1576138491675</updated>
-      <workItem from="1576138498331" duration="60671000" />
+      <workItem from="1576138498331" duration="87071000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="60671000" />
+    <option name="totallyTimeSpent" value="87071000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="1080" y="752" width="1920" height="1053" extended-state="6" />
@@ -351,16 +388,6 @@
     <entry file="file://$PROJECT_DIR$/twintail/tool/__init__.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/twintail/tool/extract_img.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="682">
-          <caret line="77" selection-start-line="77" selection-end-line="77" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/twintail/tool/registration.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-100">
@@ -377,16 +404,6 @@
     <entry file="file://$PROJECT_DIR$/twintail/utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/twintail/tool/base.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="16" column="18" selection-start-line="16" selection-start-column="18" selection-end-line="16" selection-end-column="18" />
-          <folding>
-            <element signature="e#0#4#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/twintail/tool/__main__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="221">
@@ -398,16 +415,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="396">
           <caret line="39" selection-start-line="39" selection-end-line="39" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/twintail/tool/preprocessing.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="306">
-          <caret line="25" column="53" selection-start-line="25" selection-start-column="53" selection-end-line="25" selection-end-column="53" />
-          <folding>
-            <element signature="e#0#32#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -458,20 +465,67 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/twintail/utils/spots/cluster.py">
+    <entry file="file://$PROJECT_DIR$/twintail/tool/preprocessing.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="306">
-          <caret line="27" column="23" selection-start-line="27" selection-start-column="23" selection-end-line="27" selection-end-column="23" />
+          <caret line="25" column="53" selection-start-line="25" selection-start-column="53" selection-end-line="25" selection-end-column="53" />
+          <folding>
+            <element signature="e#0#32#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/try/exp1.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="493">
+          <caret line="29" column="63" selection-start-line="29" selection-start-column="63" selection-end-line="29" selection-end-column="63" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/twintail/tool/extract_img.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="391">
+          <caret line="23" column="23" selection-start-line="23" selection-start-column="23" selection-end-line="23" selection-end-column="23" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/twintail/tool/base.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+          <folding>
+            <element signature="e#0#46#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/twintail/utils/spots/cluster.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="646">
+          <caret line="47" column="20" selection-start-line="47" selection-start-column="20" selection-end-line="47" selection-end-column="20" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/twintail/tool/decode.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="18" column="29" selection-start-line="18" selection-start-column="29" selection-end-line="18" selection-end-column="29" />
+          <folding>
+            <element signature="e#0#27#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/twintail/utils/io/h5.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="328">
-          <caret line="51" column="16" selection-start-line="51" selection-start-column="16" selection-end-line="51" selection-end-column="16" />
+        <state relative-caret-position="481">
+          <caret line="64" lean-forward="true" selection-start-line="64" selection-end-line="64" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
@@ -480,8 +534,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/twintail/tool/call_spots.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="362">
-          <caret line="90" column="46" lean-forward="true" selection-start-line="90" selection-start-column="46" selection-end-line="90" selection-end-column="46" />
+        <state relative-caret-position="221">
+          <caret line="61" lean-forward="true" selection-start-line="61" selection-end-line="61" />
           <folding>
             <element signature="e#0#6#0" expanded="true" />
           </folding>

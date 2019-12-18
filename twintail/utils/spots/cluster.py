@@ -1,4 +1,6 @@
+import typing as t
 import numpy as np
+import scipy.sparse as ssp
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestCentroid
 
@@ -12,9 +14,12 @@ def merge_close_points(points: np.ndarray,
     :return: Coordinates of merged points.
     """
     clustering = DBSCAN(min_dist, min_samples=1, metric='euclidean').fit(points)
-    centroids = NearestCentroid(metric='euclidean')\
-        .fit(points, clustering.labels_)\
-        .centroids_
+    if np.unique(clustering.labels_).shape[0] > 1:
+        centroids = NearestCentroid(metric='euclidean')\
+            .fit(points, clustering.labels_)\
+            .centroids_
+    else:
+        centroids = points
     return centroids
 
 
@@ -53,4 +58,23 @@ def merge_close_points_3d(points: np.ndarray,
     return centroids
 
 
+def coordinates_to_mask(points: np.ndarray,
+                        shape: t.Optional[t.Tuple] = None) -> np.ndarray:
+    """Convert coordinates to mask array.
 
+    :param points: Coordinates of all points.
+    In shape (n_points, 3) and dtype np.int.
+    :param shape: Shape of mask array.
+    :return: Mask array with dtype bool.
+    """
+    assert points.shape[1] == 3
+    points = points.astype(np.int)
+    dim_max = tuple([points[:, i].max()+1 for i in range(points.shape[1])])
+    if shape is None:
+        shape = dim_max
+    else:
+        assert len(shape) == points.shape[1]
+        shape = tuple([shape[i] or dim_max[i] for i in range(points.shape[1])])
+    arr = np.zeros(shape, dtype=np.bool)
+    arr[points[:, 0], points[:, 1], points[:, 2]] = True
+    return arr

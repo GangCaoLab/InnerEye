@@ -6,7 +6,7 @@ from twintail.utils.spots.call import lmpn, blob, tophat_extrema
 from twintail.utils.spots.cluster import merge_close_points_3d
 from twintail.utils.img import slide_over_z, slide_over_ch
 from twintail.utils.misc import local_arguments
-from twintail.utils.io.h5 import write_spots
+from twintail.utils.io.h5 import write_spots, write_meta
 from .base import ChainTool
 
 
@@ -50,12 +50,14 @@ class CallSpots(ChainTool):
         self.z_mode = z_mode
         self.n_workers = n_workers
         self.cycles = None
+        self.dimensions = None
         self.spots = None
 
     def write(self, path: str):
         """Write spot coordinates to disk"""
         print_arguments(log.info)
-        write_spots(path, self.spots)
+        dims = [dim[:3] for dim in self.dimensions]
+        write_spots(path, self.spots, dims)
         return self
 
     def lmpn(self,
@@ -109,5 +111,30 @@ class CallSpots(ChainTool):
         for (ixcy, ixch), im in zip(idx, map_(func, coords)):
             spots[ixcy].append(im)
         self.spots = spots
+        return self
+
+    def count(self, outfile=None, z=True):
+        """Count number of points in each cycle and channel.
+
+        :param outfile: Write count result to specified file.
+        :param z: Count each z layer or not.
+        :return:
+        """
+        print_arguments(log.info)
+        msg = ""
+        for ixcy, chs in enumerate(self.spots):
+            msg += f"Cycle index: {ixcy}\n"
+            for ixch, coords in enumerate(chs):
+                msg += f"\tChannel index: {ixch}\n"
+                if z:
+                    for z in np.unique(coords[:, 2]):
+                        layer = coords[coords[:, 2] == z]
+                        msg += f"\t\t{z}\t{layer.shape[0]}\n"
+                else:
+                    msg += f"\t\t{coords.shape[0]}\n"
+        log.info(msg)
+        if outfile:
+            with open(outfile, 'w') as f:
+                f.write(msg)
         return self
 

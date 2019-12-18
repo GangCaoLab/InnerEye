@@ -14,11 +14,18 @@ class ChainTool(object):
         """Load images to memory."""
         print_arguments(log.info)
         self.cycles = read_cycles(path)
+        self.dimensions = [img.shape for img in self.cycles]
         return self
 
     def write(self, path: str):
         """Write back images to disk."""
         print_arguments(log.info)
         write_cycles(path, self.cycles)
+        return self
+
+    def clear(self):
+        """Clear memory"""
+        print_arguments(log.info)
+        del self.cycles
         return self
 

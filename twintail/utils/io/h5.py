@@ -52,25 +52,47 @@ def read_cycles(path: str) -> t.List[np.array]:
     return cycles
 
 
-def write_spots(path: str, spots: t.List[t.List[np.ndarray]]):
+def write_spots(path: str,
+                spots: t.List[t.List[np.ndarray]],
+                dims: t.List[t.Tuple]):
     """Write coordinates of all spots."""
     with h5py.File(path, 'w') as f:
         for ixcy, chs in enumerate(spots):
             grp = f.create_group(f"cycle_{ixcy}")
+            grp.attrs.update({'dimension': dims[ixcy]})
             for ixch, arr in enumerate(chs):
                 grp.create_dataset(f"channel_{ixch}", data=arr)
 
 
-def read_spots(path: str) -> t.List[t.List[np.ndarray]]:
+def read_spots(path: str) -> t.Tuple[t.List[t.List[np.ndarray]],
+                                     t.List[t.Tuple]]:
     """Load coordinates of all spots."""
     spots = []
+    dimensions = []
     with h5py.File(path, 'r') as f:
         cycle_names = sorted(filter(lambda a: a.startswith('cycle_'), f))
         for cycle in cycle_names:
             spots.append([])
             grp = f[cycle]
-            channel_names = sorted(filter(lambda a: a.startswith('cycle_'), f))
+            channel_names = sorted(filter(lambda a: a.startswith('channel_'), grp))
             for channel in channel_names:
                 arr = grp[channel][()]
                 spots[-1].append(arr)
-    return spots
+            dim = tuple(grp.attrs['dimension'])
+            dimensions.append(dim)
+    return spots, dimensions
+
+
+def write_meta(uri: str, meta_info: dict):
+    """Write meta information to hdf5 file."""
+    path, inner_path = parse_uri(uri)
+    with h5py.File(path, 'a') as f:
+        f[inner_path].attrs.update(meta_info)
+
+
+def read_meta(uri: str) -> dict:
+    """Read meta information from hdf5 file."""
+    path, inner_path = parse_uri(uri)
+    with h5py.File(path, 'r') as f:
+        meta = dict(f[inner_path].attrs)
+    return meta
