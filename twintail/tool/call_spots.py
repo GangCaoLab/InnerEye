@@ -1,13 +1,10 @@
 import typing as t
 import numpy as np
-from pathos.multiprocessing import ProcessingPool as Pool
 from twintail.utils.log import print_arguments
 from twintail.utils.spots.call import lmpn, blob, tophat_extrema
-from twintail.utils.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
 from twintail.utils.img import slide_over_z, slide_over_ch
 from twintail.utils.misc import local_arguments
-from twintail.utils.io.h5 import write_spots
-from .base import ChainTool
+from .base import ChainTool, SpotsTool
 
 
 from logging import getLogger
@@ -53,13 +50,6 @@ class CallSpots(ChainTool):
         self.dimensions = None
         self.spots = None
 
-    def write(self, path: str):
-        """Write spot coordinates to disk"""
-        print_arguments(log.info)
-        dims = [dim[:3] for dim in self.dimensions]
-        write_spots(path, self.spots, dims)
-        return self
-
     def lmpn(self,
              maximum_filter_size=5,
              percentile_filter_size=11,
@@ -95,53 +85,5 @@ class CallSpots(ChainTool):
         self.spots = call_spots(func, self.cycles, self.z_mode, self.n_workers)
         return self
 
-    def merge_neighboring(self,
-                          min_dist=2.0,
-                          method="dilation"):
-        """Merge neighboring points."""
-        print_arguments(log.info)
-        assert method in {'dbscan', 'dilation'}
-        if method == 'dbscan':
-            merge_func = merge_close_points_3d
-        else:
-            min_dist = min_dist // 2
-            merge_func = merge_close_points_3d_cc
-
-        pool = Pool(ncpus=self.n_workers)
-        map_ = map if self.n_workers <= 1 else pool.imap
-        idx = [(ixcy, ixch)
-               for ixcy in range(len(self.spots))
-               for ixch in range(len(self.spots[ixcy]))]
-        coords = map_(lambda t: self.spots[t[0]][t[1]], idx)
-        func = lambda c: merge_func(c, min_dist, self.z_mode)
-        spots = [[] for _ in range(len(self.spots))]
-        for (ixcy, ixch), im in zip(idx, map_(func, coords)):
-            spots[ixcy].append(im)
-        self.spots = spots
-        return self
-
-    def count(self, outfile=None, z=True):
-        """Count number of points in each cycle and channel.
-
-        :param outfile: Write count result to specified file.
-        :param z: Count each z layer or not.
-        :return:
-        """
-        print_arguments(log.info)
-        msg = ""
-        for ixcy, chs in enumerate(self.spots):
-            msg += f"Cycle index: {ixcy}\n"
-            for ixch, coords in enumerate(chs):
-                msg += f"\tChannel index: {ixch}\n"
-                if z:
-                    for z in np.unique(coords[:, 2]):
-                        layer = coords[coords[:, 2] == z]
-                        msg += f"\t\t{z}\t{layer.shape[0]}\n"
-                else:
-                    msg += f"\t\t{coords.shape[0]}\n"
-        log.info(msg)
-        if outfile:
-            with open(outfile, 'w') as f:
-                f.write(msg)
-        return self
-
+    write = SpotsTool.write
+    count = SpotsTool.count

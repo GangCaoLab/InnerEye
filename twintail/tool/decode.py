@@ -24,6 +24,3 @@ class Decode(ChainTool):
         self.cycles, self.dimensions = read_spots(path)
         return self
 
-    def merge_channels(self):
-        """"""
-        pass

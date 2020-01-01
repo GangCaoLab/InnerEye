@@ -5,3 +5,4 @@ try/
 notes/
 docs/_build
 .snakemake/
+.idea/

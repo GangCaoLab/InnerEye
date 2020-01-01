@@ -17,6 +17,8 @@ class Tools:
         self.call_spots = CallSpots
         from .preprocessing import PreProcessing
         self.pre_proc = PreProcessing
+        from .spots_op import SpotsOp
+        self.spots_op = SpotsOp
 
 
 import fire
