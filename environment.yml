@@ -1,0 +1,23 @@
+name: bioimage
+channels:
+  - anaconda
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.7
+  - pip
+  - ipython
+  - jupyter
+  - numpy
+  - scipy
+  - matplotlib
+  - openjdk
+  - pip:
+      - fire
+      - h5py
+      - scikit-image
+      - scikit-learn
+      - kivy
+      - pathos
+      - bioformats
+      - numba

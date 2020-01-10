@@ -1,6 +1,7 @@
 from pathos.multiprocessing import ProcessingPool as Pool
 from twintail.utils.log import print_arguments
 from twintail.utils.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
+from twintail.utils.spots.channel import channel_merge, channel_merge_slidez
 from .base import SpotsTool
 
 
@@ -18,6 +19,7 @@ class SpotsOp(SpotsTool):
         self.n_workers = n_workers
         self.dimensions = None
         self.spots = None
+        self.combs = None
 
     def merge_neighboring(self,
                           min_dist=2.0,
@@ -42,4 +44,15 @@ class SpotsOp(SpotsTool):
         for (ixcy, ixch), im in zip(idx, map_(func, coords)):
             spots[ixcy].append(im)
         self.spots = spots
+        return self
+
+    def channel_merge(self,
+                      radius: int = 2):
+        """Perform channel merge."""
+        print_arguments(log.info)
+        if self.z_mode == 'slide':
+            self.spots, combs = channel_merge_slidez(self.spots, radius, self.n_workers)
+        else:
+            self.spots, combs = channel_merge(self.spots, radius)
+        self.combs = combs
         return self

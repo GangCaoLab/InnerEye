@@ -78,7 +78,7 @@ class PreProcessing(ChainTool):
     def z_stack(self):
         """Stack along z-axis."""
         print_arguments(log.info)
-        self.cycles = [arr.mean(axis=2) for arr in self.cycles]
+        self.cycles = [arr.mean(axis=2, keepdims=True) for arr in self.cycles]
         return self
 
     def adjust_gamma(self, gamma=1.5):

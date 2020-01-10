@@ -2,9 +2,8 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestCentroid
 from skimage.morphology import dilation, ball, diamond
-from skimage.measure import label, regionprops
 
-from .misc import coordinates_to_mask
+from .misc import coordinates_to_mask, cc_centroids
 
 
 def merge_close_points(points: np.ndarray,
@@ -72,8 +71,7 @@ def merge_close_points_cc(points: np.ndarray,
     else:
         se = ball(radius)
     d = dilation(mask, se)
-    ccs = regionprops(label(d))
-    centroids = np.array([cc.centroid for cc in ccs])
+    centroids = cc_centroids(d)
     return centroids
 
 
