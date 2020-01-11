@@ -1,3 +1,4 @@
+from itertools import repeat
 from pathos.multiprocessing import ProcessingPool as Pool
 from twintail.utils.log import print_arguments
 from twintail.utils.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
@@ -50,9 +51,17 @@ class SpotsOp(SpotsTool):
                       radius: int = 2):
         """Perform channel merge."""
         print_arguments(log.info)
+        spots = []
+        combs = None
         if self.z_mode == 'slide':
-            self.spots, combs = channel_merge_slidez(self.spots, radius, self.n_workers)
+            for spts in self.spots:
+                spts_, combs = channel_merge_slidez(spts, radius, self.n_workers)
+                spots.append(spts_)
         else:
-            self.spots, combs = channel_merge(self.spots, radius)
+            pool = Pool(ncpus=self.n_workers)
+            map_ = map if self.n_workers == 1 else pool.map
+            for spts_, combs in map_(channel_merge, self.spots, repeat(radius)):
+                spots.append(spts_)
         self.combs = combs
+        self.spots = spots
         return self

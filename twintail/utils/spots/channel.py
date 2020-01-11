@@ -71,14 +71,14 @@ def mask_sub(oriangal: np.ndarray,
 def channel_merge(spots: t.List[np.ndarray],
                   radius: int = 2,
                   ) -> t.Tuple[t.List[np.ndarray],
-                               t.List[t.List[int, int]]]:
+                               t.List[t.List[int]]]:
     # input checks
-    assert reduce(eq, map(lambda pts: pts.shape[1], spots))
+    assert all([pts.shape[1] == spots[0].shape[1] for pts in spots[1:]])
     dim = spots[0].shape[1]
     assert 2 <= dim <= 3
     # convert coordinates to int type for convert to mask(dense matrix)
     spots = [pts.astype(np.int) for pts in spots]
-    shape = tuple([max([pts[:, i] for pts in spots])
+    shape = tuple([max([pts[:, i].max() for pts in spots]) + 1
                    for i in range(dim)])
     masks = [coordinates_to_mask(pts, shape) for pts in spots]
     combs = channel_combinations(list(range(len(spots))), 2, dangling=True)
@@ -106,14 +106,14 @@ def channel_merge_slidez(spots: t.List[np.ndarray],
                          radius: int = 2,
                          n_workers: int = 1,
                          ) -> t.Tuple[t.List[np.ndarray],
-                                      t.List[t.List[int, int]]]:
+                                      t.List[t.List[int]]]:
     assert all([pts.shape[1] == 3 for pts in spots])
-    zs = np.unique(np.r_[[pts[:, 2] for pts in spots]])
+    zs = np.unique(np.hstack([pts[:, 2] for pts in spots]))
     spots_by_z = []
     for z in zs:  # split by z
         spots_z = []
         for pts in spots:
-            in_layer = pts[pts[:, 2] == z]
+            in_layer = pts[pts[:, 2] == z][:, :2]
             spots_z.append(in_layer)
         spots_by_z.append(spots_z)
 

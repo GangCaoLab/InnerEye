@@ -57,7 +57,7 @@ class SpotsTool(ChainTool):
         del self.spots
         return self
 
-    def count(self, outfile=None, z=True):
+    def count(self, outfile=None, show_z=True):
         """Count number of points in each cycle and channel.
 
         :param outfile: Write count result to specified file.
@@ -69,11 +69,15 @@ class SpotsTool(ChainTool):
         for ixcy, chs in enumerate(self.spots):
             msg += f"Cycle index: {ixcy}\n"
             for ixch, coords in enumerate(chs):
-                msg += f"\tChannel index: {ixch}\n"
-                if z:
+                if hasattr(self, 'combs') and self.combs:
+                    combs = getattr(self, 'combs')
+                    msg += f"\tChannel index: {ixch}{tuple(combs[ixch])}\n"
+                else:
+                    msg += f"\tChannel index: {ixch}\n"
+                if show_z:
                     for z in np.unique(coords[:, 2]):
                         layer = coords[coords[:, 2] == z]
-                        msg += f"\t\t{z}\t{layer.shape[0]}\n"
+                        msg += f"\t\tz: {int(z)}\tcount: {layer.shape[0]}\n"
                 else:
                     msg += f"\t\t{coords.shape[0]}\n"
         log.info(msg)
