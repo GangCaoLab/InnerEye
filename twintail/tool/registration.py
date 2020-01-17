@@ -1,5 +1,4 @@
 import typing as t
-import os.path as osp
 import numpy as np
 
 from twintail.utils.log import print_arguments
@@ -35,6 +34,8 @@ def registration(path, outpath, ref_cycle=-1, channel='mean', z='ignore', method
     if method == 'orb-match':
         match_func = orb_match
         transform_func = orb_transform
+    else:
+        raise NotImplementedError
     transforms = [
         None if arr is ref_arr else match_func(arr, ref_arr, **kwargs)
         for arr in arrs_for_align
@@ -58,11 +59,10 @@ def registration(path, outpath, ref_cycle=-1, channel='mean', z='ignore', method
                 cs.append(np.stack(zs, axis=2))
             aligned.append(np.stack(cs, axis=3))
     log.info(f"Output.")
-    write_cycles(aligned, outpath)
+    write_cycles(outpath, aligned)
 
 
-
-def extract_channel(arr:np.ndarray, channel:t.Union[int, str]) -> np.ndarray:
+def extract_channel(arr: np.ndarray, channel: t.Union[int, str]) -> np.ndarray:
     if isinstance(channel, int):
         return arr[channel]
     elif isinstance(channel, str) and channel.isdigit():
