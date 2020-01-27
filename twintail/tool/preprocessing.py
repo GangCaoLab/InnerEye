@@ -38,7 +38,7 @@ class PreProcessing(ChainTool):
         sx, sy, sz, sch, scy = [
             slice(*i) if isinstance(i, Iterable) else slice(i)
             for i in (x, y, z, ch, cy)]
-        self.cycles = [img[sx, sy, sz, sch] for img in self.cycles][scy]
+        self.cycles = [img[sy, sx, sz, sch] for img in self.cycles][scy]
         return self
 
     def select(self,
