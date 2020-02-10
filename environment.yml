@@ -21,3 +21,4 @@ dependencies:
       - pathos
       - bioformats
       - numba
+      - networkx

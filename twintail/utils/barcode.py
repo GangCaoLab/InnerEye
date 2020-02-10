@@ -22,8 +22,10 @@ def get_chars2chidx(channels: str,
     else:
         from twintail.utils.spots.channel import channel_combinations
         combs = channel_combinations(list(range(len(channels))), k)
-        chars2chidx = {sum([channels[i] for i in oidxs]): idx
-                       for idx, oidxs in enumerate(combs)}
+        chars2chidx = {
+            "".join(sorted([channels[i] for i in oidxs])): idx
+            for idx, oidxs in enumerate(combs)
+        }
     return chars2chidx
 
 
@@ -37,6 +39,7 @@ def get_code2chidxs(codes: t.Iterable[str],
         chidxs = []
         for i in range(len(code) // k):
             chars = code[i*k:(i+1)*k]
+            chars = "".join(sorted(chars))
             chidx = chars2chidx[chars]
             chidxs.append(chidx)
         code2chidxs[code] = chidxs

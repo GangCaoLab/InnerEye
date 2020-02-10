@@ -1,5 +1,6 @@
 from .base import SpotsTool
 from twintail.utils.log import print_arguments
+from twintail.utils.spots.decode import DistGraphDecode
 
 import logging
 
@@ -22,6 +23,7 @@ class Decode(SpotsTool):
         self.dimensions = None
         self.code2gene = None
         self.code2chidxs = None
+        self.dc = None
 
     def parse(self,
               code_book: str,
@@ -32,11 +34,35 @@ class Decode(SpotsTool):
         print_arguments(log.info)
         self.code2gene = cb = read_codebook(code_book)
         self.code2chidxs = get_code2chidxs(cb.keys(), channels, chars_per_cycle)
+        return self
 
-    def dist_graph(self, d: float):
-        print_arguments(log.info)
+    def _check_codes_and_spots(self):
+        if not self.spots:
+            raise ValueError("please read spots firstly.")
+        if not self.code2gene:
+            raise ValueError("please parse barcodes firstly.")
         for code in self.code2gene.keys():
             gene = self.code2gene[code]
             chidxs = self.code2chidxs[code]
+            try:
+                for ixcy, ixch in enumerate(chidxs):
+                    pts = self.spots[ixcy][ixch]
+            except IndexError:
+                msg = "Uncorrected cycle or channel indexing, " +\
+                      f"when index gene {gene}, channel indexes: {chidxs}. " +\
+                      f"spots shape: {[len(chs) for chs in self.spots]}"
+                log.error(msg)
+                raise ValueError(msg)
 
+    def dist_graph(self, d: float):
+        """Decode via distance graph"""
+        print_arguments(log.info)
+        self._check_codes_and_spots()
+        self.dc = DistGraphDecode(self.spots)
+        for code in self.code2gene.keys():
+            gene = self.code2gene[code]
+            chidxs = self.code2chidxs[code]
+            pts, d_sum = self.dc.decode(chidxs, d)
+            print(gene, pts, d_sum)
+        return self
 

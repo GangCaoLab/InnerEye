@@ -19,6 +19,8 @@ class Tools:
         self.pre_proc = PreProcessing
         from .spots_op import SpotsOp
         self.spots_op = SpotsOp
+        from .decode import Decode
+        self.decode = Decode
 
 
 import fire
