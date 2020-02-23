@@ -1,10 +1,11 @@
 from .base import SpotsTool
 from twintail.utils.log import print_arguments
 from twintail.utils.spots.decode import DistGraphDecode
+from twintail.utils.io.h5 import write_decode
+from twintail.utils.barcode import read_codebook, get_code2chidxs
 
 import logging
 
-from ..utils.barcode import read_codebook, get_code2chidxs
 
 log = logging.getLogger(__file__)
 
@@ -24,6 +25,9 @@ class Decode(SpotsTool):
         self.code2gene = None
         self.code2chidxs = None
         self.dc = None
+        self.points_per_gene = None
+        self.dists_per_gene = None
+        self.chidxs_per_gene = None
 
     def parse(self,
               code_book: str,
@@ -59,10 +63,37 @@ class Decode(SpotsTool):
         print_arguments(log.info)
         self._check_codes_and_spots()
         self.dc = DistGraphDecode(self.spots)
+        self.points_per_gene = []
+        self.dists_per_gene = []
+        self.chidxs_per_gene = []
         for code in self.code2gene.keys():
             gene = self.code2gene[code]
+            log.debug(f"Decoding gene {gene}")
             chidxs = self.code2chidxs[code]
             pts, d_sum = self.dc.decode(chidxs, d)
-            print(gene, pts, d_sum)
+            self.points_per_gene.append(pts)
+            self.dists_per_gene.append(d_sum)
+            self.chidxs_per_gene.append(chidxs)
         return self
 
+    def count(self):
+        """Count decode result."""
+        print_arguments(log.info)
+        info = "Decode result count:\n"
+        for ix, (code, gene) in enumerate(self.code2gene.items()):
+            pts = self.points_per_gene[ix]
+            info += f"{gene}\t{code}\t{pts.shape[0]}\n"
+        log.info(info)
+        return self
+
+    def write(self, path: str):
+        """Write decode result to disk."""
+        print_arguments(log.info)
+        write_decode(path,
+                     list(self.code2gene.values()),
+                     self.points_per_gene,
+                     self.dists_per_gene,
+                     list(self.code2gene.keys()),
+                     self.chidxs_per_gene,
+                     )
+        return self

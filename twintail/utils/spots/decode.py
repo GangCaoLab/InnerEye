@@ -1,9 +1,12 @@
 import typing as t
 from collections import OrderedDict as od
-from functools import lru_cache
 import numpy as np
 from sklearn.neighbors import KDTree
 import networkx as nx
+
+import logging
+
+log = logging.getLogger(__file__)
 
 
 class DistGraphDecode(object):
@@ -22,7 +25,8 @@ class DistGraphDecode(object):
                 self.kdtrees.setdefault(ixcy, od())
                 self.kdtrees[ixcy][ixch] = KDTree(pts)
 
-    def query(self, X, radius, ixcy, ixch):
+    def query(self, X, radius, ixcy, ixch) -> t.Tuple[np.ndarray, np.ndarray]:
+        log.debug(f"query array with shape: {X.shape} radius: {radius}")
         tree = self.kdtrees[ixcy][ixch]
         ind, dist = tree.query_radius(X, radius, return_distance=True)
         return ind, dist
@@ -32,12 +36,17 @@ class DistGraphDecode(object):
                radius: float) -> t.Tuple[np.ndarray, np.ndarray]:
         assert len(chidxs) > 0
         dg = DistGraph(self)
+        log.debug("Begin to build graph:")
         for ixch in chidxs:
+            log.debug(f"Add channel: {ixch}")
             dg.add_cycle(ixch, radius)
         self.dist_graph = dg
+        log.debug("Begin to decode from graph. "
+                  f"graph size: {len(dg.G.nodes)} nodes {len(dg.G.edges)} edges")
         chains, dists = dg.get_chains()
         inds = np.array([cha[0][1] for cha in chains], dtype=np.int)
         pts = self.spots[0][chidxs[0]][inds]
+        log.debug(f"Decode complete, result shape: {pts.shape}")
         return pts, np.array(dists, dtype=np.float)
 
 
@@ -74,12 +83,13 @@ class DistGraph(object):
             self.old_inds = np.arange(self.x.shape[0])
             self.init_nodes(self.old_inds)
         else:
+            # get new cycle points indexes and distances(with old)
             inds, dists = self.dc.query(self.x, radius, self.ixcy, ixch)
             for ix in range(inds.shape[0]):
                 ind = inds[ix]
                 dist = dists[ix]
-                for ix_node in self.old_inds:
-                    self.add_edges(ind, base_ix=ix_node, dists=dist)
+                ix_old = self.old_inds[ix]
+                self.add_edges(ind, base_ix=ix_old, dists=dist)
             uq_inds = np.unique(np.hstack(inds))
             self.x = self.dc.spots[self.ixcy][ixch][uq_inds, :]
             self.old_inds = uq_inds
@@ -88,9 +98,12 @@ class DistGraph(object):
     def get_chains(self) -> t.Tuple[t.List[t.List[t.Tuple[int, int]]],
                                     t.List[float]]:
         ccs: t.List[set] = list(nx.connected_components(self.G))
+        ccs = [cc for cc in ccs if len(cc) >= self.ixcy]
+        log.debug(f"Connected components number: {len(ccs)}")
         chains = []
         dists = []
         for cc in ccs:
+            log.debug(f"CC size: {len(cc)}")
             heads = []
             tails = []
             for ic, n in cc:

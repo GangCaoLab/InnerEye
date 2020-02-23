@@ -96,3 +96,50 @@ def read_meta(uri: str) -> dict:
     with h5py.File(path, 'r') as f:
         meta = dict(f[inner_path].attrs)
     return meta
+
+
+def write_decode(path: str,
+                 genes: t.List[str],
+                 points_per_gene: t.List[np.ndarray],
+                 dists_per_gene: t.List[np.ndarray],
+                 barcodes_per_gene: t.Optional[t.List[str]],
+                 chidxs_per_gene: t.Optional[t.List[str]]):
+    """Write decode result to hdf5 file."""
+    with h5py.File(path, 'w') as f:
+        g_p = f.create_group("points")
+        g_d = f.create_group("distances")
+        for ix, gene in enumerate(genes):
+            g_p.create_dataset(gene, data=points_per_gene[ix])
+            g_d.create_dataset(gene, data=dists_per_gene[ix])
+        if barcodes_per_gene:
+            f.attrs['barcodes'] = barcodes_per_gene
+        if chidxs_per_gene:
+            f.attrs['channel_indexes'] = chidxs_per_gene
+
+
+def read_decode(path: str) -> t.Tuple[
+    t.List[str],
+    t.List[np.ndarray],
+    t.List[np.ndarray],
+    t.Optional[t.List[str]],
+    t.Optional[t.List[str]],
+    ]:
+    """Read decode result to hdf5 file."""
+    genes = []
+    points_per_gene = []
+    dists_per_gene = []
+    barcodes_per_gene = []
+    chidxs_per_gene = []
+    with h5py.File(path) as f:
+        g_p = f['points']
+        g_d = f['distances']
+        for gene, points in g_p.items():
+            genes.append(gene)
+            points_per_gene.append(points[()])
+            dists_per_gene.append(g_d[gene][()])
+        if 'barcodes' in f:
+            barcodes_per_gene = f.attrs['barcodes']
+        if 'channel_indexes' in f:
+            chidxs_per_gene = f.attrs['channel_indexes']
+    return genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene
+
