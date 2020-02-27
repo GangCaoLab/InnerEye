@@ -1,8 +1,8 @@
 from .base import SpotsTool
-from twintail.utils.log import print_arguments
-from twintail.utils.spots.decode import DistGraphDecode
-from twintail.utils.io.h5 import write_decode
-from twintail.utils.barcode import read_codebook, get_code2chidxs
+from twintail.lib.log import print_arguments
+from twintail.lib.spots.decode import DistGraphDecode
+from twintail.lib.io.h5 import write_decode
+from twintail.lib.barcode import read_codebook, get_code2chidxs
 
 import logging
 

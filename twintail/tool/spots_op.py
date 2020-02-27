@@ -1,8 +1,8 @@
 from itertools import repeat
 from pathos.multiprocessing import ProcessingPool as Pool
-from twintail.utils.log import print_arguments
-from twintail.utils.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
-from twintail.utils.spots.channel import channel_merge, channel_merge_slidez
+from twintail.lib.log import print_arguments
+from twintail.lib.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
+from twintail.lib.spots.channel import channel_merge, channel_merge_slidez
 from .base import SpotsTool
 
 

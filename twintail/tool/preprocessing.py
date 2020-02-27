@@ -1,6 +1,6 @@
 from collections import Iterable
 import typing as t
-from twintail.utils.log import print_arguments
+from twintail.lib.log import print_arguments
 from .base import ChainTool
 from logging import getLogger
 

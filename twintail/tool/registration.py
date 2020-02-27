@@ -1,8 +1,8 @@
 import typing as t
 import numpy as np
 
-from twintail.utils.log import print_arguments
-from twintail.utils.io.h5 import read_cycles, write_cycles
+from twintail.lib.log import print_arguments
+from twintail.lib.io.h5 import read_cycles, write_cycles
 
 from logging import getLogger
 log = getLogger(__file__)
@@ -119,7 +119,7 @@ def orb_transform(im, im_ref, h):
 
 
 if __name__ == "__main__":
-    from twintail.utils.log import set_global_logging
+    from twintail.lib.log import set_global_logging
     set_global_logging()
     import fire
     fire.Fire()

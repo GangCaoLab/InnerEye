@@ -1,4 +1,4 @@
-from twintail.utils.log import set_global_logging
+from twintail.lib.log import set_global_logging
 
 
 class Tools:

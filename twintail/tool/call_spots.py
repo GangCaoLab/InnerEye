@@ -1,9 +1,9 @@
 import typing as t
 import numpy as np
-from twintail.utils.log import print_arguments
-from twintail.utils.spots.call import lmpn, blob, tophat_extrema
-from twintail.utils.img import slide_over_z, slide_over_ch
-from twintail.utils.misc import local_arguments
+from twintail.lib.log import print_arguments
+from twintail.lib.spots.call import lmpn, blob, tophat_extrema
+from twintail.lib.img import slide_over_z, slide_over_ch
+from twintail.lib.misc import local_arguments
 from .base import ChainTool, SpotsTool
 
 
