@@ -1,6 +1,7 @@
 from collections import Iterable
 import typing as t
 from twintail.lib.log import print_arguments
+from twintail.lib.misc import local_arguments
 from .base import ChainTool
 from logging import getLogger
 
@@ -86,4 +87,15 @@ class PreProcessing(ChainTool):
         from skimage.exposure import adjust_gamma
         print_arguments(log.info)
         self.cycles = [adjust_gamma(arr, gamma) for arr in self.cycles]
+        return self
+
+    def registration(self, ref_cycle=-1, ref_channel='mean'):
+        """Image registration, align images to the reference cycle."""
+        from twintail.lib.img.registration import Registration2d
+        print_arguments(log.info)
+        args = local_arguments(keywords=False)
+        reg = Registration2d(self.cycles, *args)
+        reg.estimate_transform()
+        aligned = reg.apply()
+        self.cycles = aligned
         return self

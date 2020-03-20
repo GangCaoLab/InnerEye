@@ -2,7 +2,7 @@ import typing as t
 import numpy as np
 from twintail.lib.log import print_arguments
 from twintail.lib.spots.call import lmpn, blob, tophat_extrema
-from twintail.lib.img import slide_over_z, slide_over_ch
+from twintail.lib.img.misc import slide_over_z, slide_over_ch
 from twintail.lib.misc import local_arguments
 from .base import ChainTool, SpotsTool
 
