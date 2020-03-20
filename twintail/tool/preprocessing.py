@@ -92,7 +92,7 @@ class PreProcessing(ChainTool):
     def registration(self,
                      ref_cycle=-1, ref_channel='mean',
                      ref_z='mean',
-                     elastix_parameter_map='rigid'):
+                     elastix_parameter_map='affine'):
         """Image registration, align images to the reference cycle."""
         from twintail.lib.img.registration import Registration2d
         print_arguments(log.info)

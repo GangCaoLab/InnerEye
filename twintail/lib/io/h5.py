@@ -130,7 +130,7 @@ def read_decode(path: str) -> t.Tuple[
     dists_per_gene = []
     barcodes_per_gene = []
     chidxs_per_gene = []
-    with h5py.File(path) as f:
+    with h5py.File(path, 'r') as f:
         g_p = f['points']
         g_d = f['distances']
         for gene, points in g_p.items():

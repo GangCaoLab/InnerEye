@@ -5,6 +5,7 @@ from logging import getLogger
 import numpy as np
 import SimpleITK as sitk
 
+from twintail.lib.img.misc import get_img_2d
 from .misc import slide_over_z
 
 log = getLogger(__file__)
@@ -20,22 +21,6 @@ def get_elastix_log_dir():
     return name()
 
 
-def get_img_2d(im4d: np.ndarray,
-               ch: t.Union[str, int],
-               z: t.Union[str, int]) -> np.ndarray:
-    assert (ch == 'mean') or (type(ch) is int)
-    assert (z == 'mean') or (type(z) is int)
-    if ch == 'mean':
-        im3d = im4d.mean(axis=3)
-    else:
-        im3d = im4d[:, :, :, ch]
-    if z == 'mean':
-        im2d = im3d.mean(axis=2)
-    else:
-        im2d = im3d[:, :, z]
-    return im2d
-
-
 class Registration2d(object):
 
     def __init__(self,
@@ -43,7 +28,7 @@ class Registration2d(object):
                  ref_cycle: int = -1,
                  ref_channel: t.Union[int, str] = 'mean',
                  ref_z: t.Union[int, str] = 'mean',
-                 elastix_parameter_map='rigid'
+                 elastix_parameter_map='affine'
                  ):
         self.cycles = cycles
         self.ref_cycle = ref_cycle

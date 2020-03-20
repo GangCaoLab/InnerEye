@@ -7,8 +7,6 @@ class Tools:
             log_level=log_level,
             log_file=log_file
         )
-        from .gen import gen
-        self.gen = gen
         from .extract_img import extract_samples
         self.extract_samples = extract_samples
         from .call_spots import CallSpots
@@ -19,6 +17,8 @@ class Tools:
         self.spots_op = SpotsOp
         from .decode import Decode
         self.decode = Decode
+        from .plot import Plot2d
+        self.plot2d = Plot2d
 
 
 import fire
