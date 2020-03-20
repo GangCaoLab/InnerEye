@@ -43,19 +43,23 @@ class Registration2d(object):
                  ref_cycle: int = -1,
                  ref_channel: t.Union[int, str] = 'mean',
                  ref_z: t.Union[int, str] = 'mean',
-                 n_workers: int = 1,
+                 elastix_parameter_map='rigid'
                  ):
         self.cycles = cycles
         self.ref_cycle = ref_cycle
         self.ref_channel = ref_channel
         self.ref_z = ref_z
-        self.selx = sitk.ElastixImageFilter()
-        self.selx.SetParameterMap(sitk.GetDefaultParameterMap("rigid"))
         self.transforms = None
-        self.n_workers = n_workers
-
+        self.selx = sitk.ElastixImageFilter()
+        try:
+            pm = sitk.GetDefaultParameterMap(elastix_parameter_map)
+        except RuntimeError:
+            pm = sitk.ReadParameterFile(elastix_parameter_map)
+        self.selx.SetParameterMap(pm)
         self.selx.LogToFileOn()
-        self.selx.SetOutputDirectory(get_elastix_log_dir())
+        elastix_log_dir = get_elastix_log_dir()
+        log.info(f"Redirect elastix logs to '{elastix_log_dir}'")
+        self.selx.SetOutputDirectory(elastix_log_dir)
         self.selx.LogToConsoleOff()
 
     def estimate_transform(self):
@@ -90,6 +94,6 @@ class Registration2d(object):
                     im_itk = sitk.GetImageFromArray(im2d)
                     im_res = sitk.Transformix(im_itk, trans)
                     return sitk.GetArrayFromImage(im_res)
-                res = slide_over_z(im4d, proc_im2d, self.n_workers)
+                res = slide_over_z(im4d, proc_im2d, 1)
             aligned.append(res)
         return aligned
