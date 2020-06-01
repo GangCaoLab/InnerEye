@@ -3,7 +3,7 @@ import pathlib
 import json
 import multiprocessing
 
-from twintail.lib.io.h5 import write_array, read_array
+from ..lib.io.h5 import write_array, read_array
 
 
 import logging

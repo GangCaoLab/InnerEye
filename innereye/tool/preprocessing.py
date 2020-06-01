@@ -1,7 +1,7 @@
 from collections import Iterable
 import typing as t
-from twintail.lib.log import print_arguments
-from twintail.lib.misc import local_arguments
+from ..lib.log import print_arguments
+from ..lib.misc import local_arguments
 from .base import ChainTool
 from logging import getLogger
 

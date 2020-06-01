@@ -1,8 +1,8 @@
 from .base import SpotsTool
-from twintail.lib.log import print_arguments
-from twintail.lib.spots.decode import DistGraphDecode
-from twintail.lib.io.h5 import write_decode
-from twintail.lib.barcode import read_codebook, get_code2chidxs
+from ..lib.log import print_arguments
+from ..lib.spots.decode import DistGraphDecode
+from ..lib.io.h5 import write_decode
+from ..lib.barcode import read_codebook, get_code2chidxs
 
 import logging
 
@@ -76,7 +76,7 @@ class Decode(SpotsTool):
             self.chidxs_per_gene.append(chidxs)
         return self
 
-    def count(self):
+    def count(self, outfile=None):
         """Count decode result."""
         print_arguments(log.info)
         info = "Decode result count:\n"
@@ -84,6 +84,9 @@ class Decode(SpotsTool):
             pts = self.points_per_gene[ix]
             info += f"{gene}\t{code}\t{pts.shape[0]}\n"
         log.info(info)
+        if outfile:
+            with open(outfile, 'w') as f:
+                f.write(info)
         return self
 
     def write(self, path: str):

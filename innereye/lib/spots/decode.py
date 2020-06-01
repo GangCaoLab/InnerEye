@@ -109,7 +109,7 @@ class DistGraph(object):
             for ic, n in cc:
                 if ic == self.ixcy - 1:
                     tails.append((ic, n))
-                elif ic == 0:
+                if ic == 0:
                     heads.append((ic, n))
             if (len(tails) == 0) or (len(heads) == 0):
                 continue

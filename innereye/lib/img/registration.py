@@ -5,7 +5,7 @@ from logging import getLogger
 import numpy as np
 import SimpleITK as sitk
 
-from twintail.lib.img.misc import get_img_2d
+from .misc import get_img_2d
 from .misc import slide_over_z
 
 log = getLogger(__file__)

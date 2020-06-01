@@ -1,22 +1,23 @@
 from itertools import product
 
 from .base import ChainTool
-from twintail.lib.io.h5 import read_decode
-from twintail.lib.img.misc import get_img_2d
+from ..lib.io.h5 import read_decode
+from ..lib.img.misc import get_img_2d
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from random import random
+import random
 
 
-def marker_styles(cmap="hsv"):
+def marker_styles(cmap="hsv", seed=0):
     markers = [".", "v", "^", "<", ">",
                "1", "2", "3", "4", "s",
                "p", "P", "*", "+", "x"]
     ix = 0
     cmap_ = cm.get_cmap(cmap)
+    random.seed(seed)
     while True:
-        yield cmap_(random()), markers[ix % len(markers)]
+        yield cmap_(random.random()), markers[ix % len(markers)]
         ix += 1
 
 
@@ -44,11 +45,21 @@ class Plot2d(ChainTool):
         self.coordinates = points_per_gene
         return self
 
-    def plot(self, figpath):
+    def plot(self, figpath=None):
         fig, ax = plt.subplots(figsize=self.figsize)
-        ax.imshow(self.img, cmap='gray')
+        if self.img is not None:
+            ax.imshow(self.img, cmap='gray')
+        if self.genes is not None:
+            self._plot_genes(ax)
+        if figpath:
+            fig.savefig(figpath)
+        else:
+            plt.show()
+        return self
+
+    def _plot_genes(self, ax):
         marker_gen = marker_styles()
-        s = 10 * (self.figsize[0] * self.figsize[1]) // 100
+        s = 5 * (self.figsize[0] * self.figsize[1]) // 100
         for ix, gene in enumerate(self.genes):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
@@ -60,5 +71,6 @@ class Plot2d(ChainTool):
                        s=s,
                        label=gene)
         ax.legend(framealpha=0.5)
-        fig.savefig(figpath)
-        return self
+        plt.ylim(0, self.img.shape[0])
+        plt.xlim(0, self.img.shape[1])
+

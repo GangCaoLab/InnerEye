@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'twintail'
+project = 'innereye'
 copyright = '2019, NaNg'
 author = 'NaNg'
 

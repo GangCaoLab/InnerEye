@@ -1,6 +1,6 @@
-from twintail.lib.log import print_arguments
-from twintail.lib.io.h5 import read_cycles, write_cycles
-from twintail.lib.io.h5 import read_spots, write_spots
+from ..lib.log import print_arguments
+from ..lib.io.h5 import read_cycles, write_cycles
+from ..lib.io.h5 import read_spots, write_spots
 
 import numpy as np
 
