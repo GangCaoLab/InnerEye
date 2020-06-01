@@ -19,6 +19,8 @@ class Tools:
         self.decode = Decode
         from .plot import Plot2d
         self.plot2d = Plot2d
+        from .chain import Chain
+        self.chain = Chain
 
 
 import fire

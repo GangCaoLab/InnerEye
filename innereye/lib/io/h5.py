@@ -137,9 +137,9 @@ def read_decode(path: str) -> t.Tuple[
             genes.append(gene)
             points_per_gene.append(points[()])
             dists_per_gene.append(g_d[gene][()])
-        if 'barcodes' in f:
+        if 'barcodes' in f.attrs:
             barcodes_per_gene = f.attrs['barcodes']
-        if 'channel_indexes' in f:
+        if 'channel_indexes' in f.attrs:
             chidxs_per_gene = f.attrs['channel_indexes']
     return genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene
 

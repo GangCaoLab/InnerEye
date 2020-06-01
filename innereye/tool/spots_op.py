@@ -65,3 +65,7 @@ class SpotsOp(ChainTool, SpotsIO):
         self.combs = combs
         self.spots = spots
         return self
+
+    read = SpotsIO.read_spots
+    write = SpotsIO.write_spots
+    count = SpotsIO.count_spots

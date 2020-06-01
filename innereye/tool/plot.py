@@ -23,9 +23,9 @@ def marker_styles(cmap="hsv", seed=0):
 class Plot2d(ChainTool, ImgIO, GenesIO):
 
     def __init__(self, figsize=(10, 10)):
-        self.figsize = figsize
+        self.figsize = None
         self.img = None
-        self.genes = None
+        self.code2gene = None
         self.coordinates = None
 
     def background(self, cycle=0, channel='mean', z='mean'):
@@ -36,12 +36,15 @@ class Plot2d(ChainTool, ImgIO, GenesIO):
         self.img = get_img_2d(im4d, channel, z)
         return self
 
-    def plot(self, figpath=None):
+    def plot(self, figpath=None, figsize=(10, 10)):
+        self.figsize = figsize
         fig, ax = plt.subplots(figsize=self.figsize)
         if self.img is not None:
             ax.imshow(self.img, cmap='gray')
-        if self.genes is not None:
+        if self.code2gene is not None:
             self._plot_genes(ax)
+        plt.ylim(0, self.img.shape[0])
+        plt.xlim(0, self.img.shape[1])
         if figpath:
             fig.savefig(figpath)
         else:
@@ -51,7 +54,7 @@ class Plot2d(ChainTool, ImgIO, GenesIO):
     def _plot_genes(self, ax):
         marker_gen = marker_styles()
         s = 5 * (self.figsize[0] * self.figsize[1]) // 100
-        for ix, gene in enumerate(self.genes):
+        for ix, gene in enumerate(self.code2gene.values()):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
@@ -62,6 +65,4 @@ class Plot2d(ChainTool, ImgIO, GenesIO):
                        s=s,
                        label=gene)
         ax.legend(framealpha=0.5)
-        plt.ylim(0, self.img.shape[0])
-        plt.xlim(0, self.img.shape[1])
 
