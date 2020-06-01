@@ -1,7 +1,6 @@
-from .base import SpotsTool
+from .base import ChainTool, SpotsIO, GenesIO
 from ..lib.log import print_arguments
 from ..lib.spots.decode import DistGraphDecode
-from ..lib.io.h5 import write_decode
 from ..lib.barcode import read_codebook, get_code2chidxs
 
 import logging
@@ -10,7 +9,7 @@ import logging
 log = logging.getLogger(__file__)
 
 
-class Decode(SpotsTool):
+class Decode(ChainTool, SpotsIO, GenesIO):
     """Decode signal from spots."""
     def __init__(self,
                  z_mode: str = 'slide',
@@ -25,7 +24,7 @@ class Decode(SpotsTool):
         self.code2gene = None
         self.code2chidxs = None
         self.dc = None
-        self.points_per_gene = None
+        self.coordinates = None
         self.dists_per_gene = None
         self.chidxs_per_gene = None
 
@@ -63,7 +62,7 @@ class Decode(SpotsTool):
         print_arguments(log.info)
         self._check_codes_and_spots()
         self.dc = DistGraphDecode(self.spots)
-        self.points_per_gene = []
+        self.coordinates = []
         self.dists_per_gene = []
         self.chidxs_per_gene = []
         for code in self.code2gene.keys():
@@ -71,32 +70,11 @@ class Decode(SpotsTool):
             log.debug(f"Decoding gene {gene}")
             chidxs = self.code2chidxs[code]
             pts, d_sum = self.dc.decode(chidxs, d)
-            self.points_per_gene.append(pts)
+            self.coordinates.append(pts)
             self.dists_per_gene.append(d_sum)
             self.chidxs_per_gene.append(chidxs)
         return self
 
-    def count(self, outfile=None):
-        """Count decode result."""
-        print_arguments(log.info)
-        info = "Decode result count:\n"
-        for ix, (code, gene) in enumerate(self.code2gene.items()):
-            pts = self.points_per_gene[ix]
-            info += f"{gene}\t{code}\t{pts.shape[0]}\n"
-        log.info(info)
-        if outfile:
-            with open(outfile, 'w') as f:
-                f.write(info)
-        return self
-
-    def write(self, path: str):
-        """Write decode result to disk."""
-        print_arguments(log.info)
-        write_decode(path,
-                     list(self.code2gene.values()),
-                     self.points_per_gene,
-                     self.dists_per_gene,
-                     list(self.code2gene.keys()),
-                     self.chidxs_per_gene,
-                     )
-        return self
+    read = SpotsIO.read_spots
+    write = GenesIO.write_genes
+    count = GenesIO.count_genes

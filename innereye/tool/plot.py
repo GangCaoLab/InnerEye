@@ -1,7 +1,6 @@
 from itertools import product
 
-from .base import ChainTool
-from ..lib.io.h5 import read_decode
+from .base import ChainTool, ImgIO, GenesIO
 from ..lib.img.misc import get_img_2d
 
 import matplotlib.pyplot as plt
@@ -21,9 +20,7 @@ def marker_styles(cmap="hsv", seed=0):
         ix += 1
 
 
-class Plot2d(ChainTool):
-
-    read_image = ChainTool.read
+class Plot2d(ChainTool, ImgIO, GenesIO):
 
     def __init__(self, figsize=(10, 10)):
         self.figsize = figsize
@@ -37,12 +34,6 @@ class Plot2d(ChainTool):
         assert (type(z) is int) or (z == 'mean')
         im4d = self.cycles[cycle]
         self.img = get_img_2d(im4d, channel, z)
-        return self
-
-    def read_gene(self, path):
-        genes, points_per_gene, _, _, _ = read_decode(path)
-        self.genes = genes
-        self.coordinates = points_per_gene
         return self
 
     def plot(self, figpath=None):

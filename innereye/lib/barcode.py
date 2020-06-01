@@ -21,7 +21,7 @@ def get_chars2chidx(channels: str,
     if k == 1:
         chars2chidx = od()
     else:
-        from twintail.lib.spots.channel import channel_combinations
+        from ..lib.spots.channel import channel_combinations
         combs = channel_combinations(list(range(len(channels))), k)
         chars2chidx = od({
             "".join(sorted([channels[i] for i in oidxs])): idx

@@ -1,7 +1,8 @@
 from ..lib.log import print_arguments
 from ..lib.io.h5 import read_cycles, write_cycles
-from ..lib.io.h5 import read_spots, write_spots
+from ..lib.io.h5 import read_spots, write_spots, read_decode, write_decode
 
+from collections import OrderedDict as od
 import numpy as np
 
 from logging import getLogger
@@ -14,29 +15,31 @@ class ChainTool(object):
         """Ending process"""
         log.info(f"Ending {self.__class__.__name__}.")
 
-    def read(self, path: str):
+
+class ImgIO(object):
+    def read_img(self, path: str):
         """Load images to memory."""
         print_arguments(log.info)
         self.cycles = read_cycles(path)
         self.dimensions = [img.shape for img in self.cycles]
         return self
 
-    def write(self, path: str):
+    def write_img(self, path: str):
         """Write back images to disk."""
         print_arguments(log.info)
         write_cycles(path, self.cycles)
         return self
 
-    def clear(self):
+    def clear_img(self):
         """Clear memory"""
         print_arguments(log.info)
         del self.cycles
         return self
 
 
-class SpotsTool(ChainTool):
+class SpotsIO(object):
 
-    def read(self, path: str):
+    def read_spots(self, path: str):
         """Read spot coordinates from disk"""
         print_arguments(log.info)
         spots, dims = read_spots(path)
@@ -44,20 +47,20 @@ class SpotsTool(ChainTool):
         self.dimensions = dims
         return self
 
-    def write(self, path: str):
+    def write_spots(self, path: str):
         """Write spot coordinates to disk"""
         print_arguments(log.info)
         dims = [dim[:3] for dim in self.dimensions]
         write_spots(path, self.spots, dims)
         return self
 
-    def clear(self):
+    def clear_spots(self):
         """Clear memory"""
         print_arguments(log.info)
         del self.spots
         return self
 
-    def count(self, outfile=None, show_z=True):
+    def count_spots(self, outfile=None, show_z=True):
         """Count number of points in each cycle and channel.
 
         :param outfile: Write count result to specified file.
@@ -84,5 +87,44 @@ class SpotsTool(ChainTool):
         if outfile:
             with open(outfile, 'w') as f:
                 f.write(msg)
+        return self
+
+
+class GenesIO(object):
+    """IO trait for decoded signals"""
+
+    def read_genes(self, path: str):
+        """Read decode result from disk"""
+        print_arguments(log.info)
+        genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene = read_decode(path)
+        self.code2gene = od(zip(barcodes_per_gene, genes))
+        self.coordinates = points_per_gene
+        self.dists_per_gene = dists_per_gene
+        self.chidxs_per_gene = chidxs_per_gene
+        return self
+
+    def write_genes(self, path: str):
+        """Write decode result to disk."""
+        print_arguments(log.info)
+        write_decode(path,
+                     list(self.code2gene.values()),
+                     self.coordinates,
+                     self.dists_per_gene,
+                     list(self.code2gene.keys()),
+                     self.chidxs_per_gene,
+                     )
+        return self
+
+    def count_genes(self, outfile=None):
+        """Count decode result."""
+        print_arguments(log.info)
+        info = "Decode result count:\n"
+        for ix, (code, gene) in enumerate(self.code2gene.items()):
+            pts = self.coordinates[ix]
+            info += f"{gene}\t{code}\t{pts.shape[0]}\n"
+        log.info(info)
+        if outfile:
+            with open(outfile, 'w') as f:
+                f.write(info)
         return self
 

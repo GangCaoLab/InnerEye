@@ -2,13 +2,13 @@ from collections import Iterable
 import typing as t
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
-from .base import ChainTool
+from .base import ChainTool, ImgIO
 from logging import getLogger
 
 log = getLogger(__file__)
 
 
-class PreProcessing(ChainTool):
+class PreProcessing(ChainTool, ImgIO):
     """Image pre-processing"""
 
     def __init__(self):
@@ -94,7 +94,7 @@ class PreProcessing(ChainTool):
                      ref_z='mean',
                      elastix_parameter_map='affine'):
         """Image registration, align images to the reference cycle."""
-        from twintail.lib.img.registration import Registration2d
+        from ..lib.img.registration import Registration2d
         print_arguments(log.info)
         args = local_arguments(keywords=False)
         reg = Registration2d(self.cycles, *args)
@@ -102,3 +102,6 @@ class PreProcessing(ChainTool):
         aligned = reg.apply()
         self.cycles = aligned
         return self
+
+    read = ImgIO.read_img
+    write = ImgIO.write_img

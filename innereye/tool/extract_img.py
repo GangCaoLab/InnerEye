@@ -18,7 +18,7 @@ def lif2hdf5(src_uri: str, dst_uri: str):
     e.g. "./Project.lif::0" means the first series in "./Project.lif".
     :param dst_uri: URI to the dataset in hdf5 file. e.g. "./sample1.hdf5::fov1"
     """
-    from twintail.lib.io.lif import read_series_uri
+    from ..lib.io.lif import read_series_uri
     log.info(f"Read series from: {src_uri}")
     img = read_series_uri(src_uri)
     log.info(f"Save image to: {dst_uri}")
@@ -44,7 +44,7 @@ def _extract(src_uri, dst_uri):
         copy_h5_dataset(src_uri, dst_uri)
     elif ext == '.lif':
         lif2hdf5(src_uri, dst_uri)
-        from twintail.lib.io.lif import stop_jvm
+        from ..lib.io.lif import stop_jvm
         stop_jvm()
     else:
         raise IOError(f"{src_uri} is in unsupported input format.")
@@ -78,7 +78,7 @@ def extract_samples(json_path: str, dst_dir: str):
 
 
 if __name__ == "__main__":
-    from twintail.lib.log import set_global_logging
+    from ..lib.log import set_global_logging
     set_global_logging()
     import fire
     fire.Fire()

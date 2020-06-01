@@ -4,7 +4,7 @@ from ..lib.log import print_arguments
 from ..lib.spots.call import lmpn, blob, tophat_extrema
 from ..lib.img.misc import slide_over_z, slide_over_ch
 from ..lib.misc import local_arguments
-from .base import ChainTool, SpotsTool
+from .base import ChainTool, ImgIO, SpotsIO
 
 
 from logging import getLogger
@@ -37,7 +37,7 @@ def call_spots(func: t.Callable,
     return spots
 
 
-class CallSpots(ChainTool):
+class CallSpots(ChainTool, ImgIO, SpotsIO):
     """Find spots(signal) within image. """
     def __init__(self,
                  z_mode: str = 'slide',
@@ -85,5 +85,6 @@ class CallSpots(ChainTool):
         self.spots = call_spots(func, self.cycles, self.z_mode, self.n_workers)
         return self
 
-    write = SpotsTool.write
-    count = SpotsTool.count
+    read = ImgIO.read_img
+    write = SpotsIO.write_spots
+    count = SpotsIO.count_spots

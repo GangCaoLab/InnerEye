@@ -3,14 +3,14 @@ from pathos.multiprocessing import ProcessingPool as Pool
 from ..lib.log import print_arguments
 from ..lib.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
 from ..lib.spots.channel import channel_merge, channel_merge_slidez
-from .base import SpotsTool
+from .base import ChainTool, SpotsIO
 
 
 from logging import getLogger
 log = getLogger(__file__)
 
 
-class SpotsOp(SpotsTool):
+class SpotsOp(ChainTool, SpotsIO):
     def __init__(self,
                  z_mode: str = 'slide',
                  n_workers: int = 1):
