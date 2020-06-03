@@ -1,7 +1,7 @@
 from ..lib.log import print_arguments
 from ..lib.io.h5 import read_cycles, write_cycles
 from ..lib.io.h5 import read_spots, write_spots, read_decode, write_decode
-from ..lib.io.h5 import read_cells, write_cells
+from ..lib.io.h5 import read_cells, write_cells, read_assign, write_assign
 
 from collections import OrderedDict as od
 import numpy as np
@@ -174,5 +174,17 @@ class CellsIO(object):
         else:
             raise NotImplementedError
         log_msg(msg, outfile)
+        return self
+
+    def read_assign(self, path: str):
+        """Read gene's cell assign from disk."""
+        print_arguments(log.info)
+        self.cell_assign = read_assign(path, list(self.code2gene.values()))
+        return self
+
+    def write_assign(self, path: str):
+        """Write gene's cell assign to disk."""
+        print_arguments(log.info)
+        write_assign(path, list(self.code2gene.values()), self.cell_assign)
         return self
 

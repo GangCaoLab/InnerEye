@@ -157,6 +157,27 @@ def write_cells(path: str,
 def read_cells(path: str) -> t.Tuple[np.ndarray, np.ndarray]:
     """Read cell position from hdf5 file."""
     with h5py.File(path, 'r') as f:
-        center = f['center']
-        mask = f['mask']
+        center = f['center'][()]
+        mask = f['mask'][()]
     return center, mask
+
+
+def write_assign(path: str,
+                 genes: t.List[str],
+                 assign: t.List[np.ndarray]):
+    """Write gene's cell assign to hdf5 file."""
+    with h5py.File(path, 'w') as f:
+        grp = f.create_group("assign")
+        for g, ass in zip(genes, assign):
+            grp.create_dataset(g, data=ass)
+
+
+def read_assign(path: str, genes: t.List[str]) -> t.List[np.ndarray]:
+    """Read gene's cell assign from hdf5 file."""
+    with h5py.File(path, 'r') as f:
+        assign = []
+        grp = f['assign']
+        for g in genes:
+            ass = grp[g]
+            assign.append(ass[()])
+    return assign
