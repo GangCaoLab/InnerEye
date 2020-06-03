@@ -143,3 +143,20 @@ def read_decode(path: str) -> t.Tuple[
             chidxs_per_gene = f.attrs['channel_indexes']
     return genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene
 
+
+def write_cells(path: str,
+                cells_center: np.ndarray,
+                cells_mask: np.ndarray,
+                ):
+    """Write cell position to hdf5 file."""
+    with h5py.File(path, 'w') as f:
+        f.create_dataset("center", data=cells_center)
+        f.create_dataset("mask", data=cells_mask)
+
+
+def read_cells(path: str) -> t.Tuple[np.ndarray, np.ndarray]:
+    """Read cell position from hdf5 file."""
+    with h5py.File(path, 'r') as f:
+        center = f['center']
+        mask = f['mask']
+    return center, mask

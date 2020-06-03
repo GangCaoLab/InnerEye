@@ -1,6 +1,7 @@
 from ..lib.log import print_arguments
 from ..lib.io.h5 import read_cycles, write_cycles
 from ..lib.io.h5 import read_spots, write_spots, read_decode, write_decode
+from ..lib.io.h5 import read_cells, write_cells
 
 from collections import OrderedDict as od
 import numpy as np
@@ -37,6 +38,13 @@ class ImgIO(object):
         return self
 
 
+def log_msg(msg, outfile=None):
+    log.info(msg)
+    if outfile:
+        with open(outfile, 'w') as f:
+            f.write(msg)
+
+
 class SpotsIO(object):
 
     def read_spots(self, path: str):
@@ -64,7 +72,7 @@ class SpotsIO(object):
         """Count number of points in each cycle and channel.
 
         :param outfile: Write count result to specified file.
-        :param z: Count each z layer or not.
+        :param show_z: Count each z layer or not.
         :return:
         """
         print_arguments(log.info)
@@ -83,10 +91,7 @@ class SpotsIO(object):
                         msg += f"\t\tz: {int(z)}\tcount: {layer.shape[0]}\n"
                 else:
                     msg += f"\t\t{coords.shape[0]}\n"
-        log.info(msg)
-        if outfile:
-            with open(outfile, 'w') as f:
-                f.write(msg)
+        log_msg(msg, outfile)
         return self
 
 
@@ -122,9 +127,52 @@ class GenesIO(object):
         for ix, (code, gene) in enumerate(self.code2gene.items()):
             pts = self.coordinates[ix]
             info += f"{gene}\t{code}\t{pts.shape[0]}\n"
-        log.info(info)
-        if outfile:
-            with open(outfile, 'w') as f:
-                f.write(info)
+        log_msg(info, outfile)
+        return self
+
+
+class CellsIO(object):
+    """IO trait for Cell positions."""
+
+    def read_cells(self, path: str):
+        """Read cell positions from disk."""
+        print_arguments(log.info)
+        center, mask = read_cells(path)
+        self.cells_center = center
+        self.cells_mask = mask
+        return self
+
+    def write_cells(self, path: str):
+        """Write cells position to disk."""
+        print_arguments(log.info)
+        write_cells(path,
+                    self.cells_center,
+                    self.cells_mask,
+                    )
+        return self
+
+    def count_cells(self, outfile=None, show_z=True):
+        """Count number of cells.
+
+        :param outfile: Write count result to specified file.
+        :param show_z: Count each z layer or not.
+        :return:
+        """
+        print_arguments(log.info)
+        from ..lib.img.cells import cell_area_counts
+        msg = "Count cells:\n"
+        msg += "z\tcount\tarea_mean\tarea_std\n"
+        centers = self.cells_center
+        mask = self.cells_mask
+        if show_z:
+            for z in np.sort(np.unique(centers[:, 2])):
+                z = int(z)
+                in_z = centers[centers[:, 2] == z]
+                im2d = mask[:, :, z]
+                area_mean, area_std = cell_area_counts(im2d)
+                msg += f"{z}\t{in_z.shape[0]}\t{area_mean}\t{area_std}\n"
+        else:
+            raise NotImplementedError
+        log_msg(msg, outfile)
         return self
 

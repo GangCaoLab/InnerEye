@@ -67,15 +67,21 @@ def slide_over_ch(arr: np.ndarray,
         return chs
 
 
-def get_img_2d(im4d: np.ndarray,
-               ch: t.Union[str, int],
-               z: t.Union[str, int]) -> np.ndarray:
+def get_img_3d(im4d: np.ndarray,
+               ch: t.Union[str, int]) -> np.ndarray:
     assert (ch == 'mean') or (type(ch) is int)
-    assert (z == 'mean') or (type(z) is int)
     if ch == 'mean':
         im3d = im4d.mean(axis=3)
     else:
         im3d = im4d[:, :, :, ch]
+    return im3d
+
+
+def get_img_2d(im4d: np.ndarray,
+               ch: t.Union[str, int],
+               z: t.Union[str, int]) -> np.ndarray:
+    assert (z == 'mean') or (type(z) is int)
+    im3d = get_img_3d(im4d, ch)
     if z == 'mean':
         im2d = im3d.mean(axis=2)
     else:

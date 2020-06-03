@@ -19,6 +19,8 @@ class Tools:
         self.decode = Decode
         from .plot import Plot2d
         self.plot2d = Plot2d
+        from .cells_op import CellsOp
+        self.cells_op = CellsOp
         from .chain import Chain
         self.chain = Chain
 
