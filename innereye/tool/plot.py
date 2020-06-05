@@ -27,6 +27,7 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
         self.code2gene = None
         self.coordinates = None
         self.cells_mask = None
+        self.cells_center = None
         self.figsize = None
         self.cell_assign = None
 
@@ -104,5 +105,5 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
                 if np.all(~np.isnan(to_)):
                     ax.plot([from_[1], to_[1]], [from_[0], to_[0]],
                             linewidth=0.5,
-                            color='blue',
-                            alpha=0.8,)
+                            color='red',
+                            alpha=0.6,)
