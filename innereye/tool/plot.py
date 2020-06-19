@@ -39,7 +39,7 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
         self.img = get_img_2d(im4d, channel, z)
         return self
 
-    def plot(self, figpath=None, figsize=(10, 10)):
+    def plot(self, figpath=None, figsize=(10, 10), legend_path="./legend.png"):
         self.figsize = figsize
         fig, ax = plt.subplots(figsize=figsize)
         if self.img is not None:
@@ -49,11 +49,21 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
         if (self.cells_center is not None) and self.show_center:
             self._plot_cells_center(ax)
         if self.code2gene is not None:
-            self._plot_genes(ax)
+            shapes, labels = self._plot_genes(ax)
+            if legend_path:
+                n = len(shapes)
+                fig_legend, ax_legend = plt.subplots(figsize=(2, 0.23*n))
+                ax_legend.legend(shapes, labels, loc=9)
+                ax_legend.axis('off')
+                fig_legend.tight_layout()
+                fig_legend.savefig(legend_path)
+            else:
+                ax.legend(framealpha=0.5)
         if self.cell_assign is not None:
             self._plot_assign(ax)
         plt.ylim(0, self.img.shape[0])
         plt.xlim(0, self.img.shape[1])
+        fig.tight_layout()
         if figpath:
             fig.savefig(figpath)
         else:
@@ -63,17 +73,19 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
     def _plot_genes(self, ax):
         marker_gen = marker_styles()
         s = 5 * (self.figsize[0] * self.figsize[1]) // 100
+        shapes = []; labels = []
         for ix, gene in enumerate(self.code2gene.values()):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
             c, m = next(marker_gen)
-            ax.scatter(pts[:, 1], pts[:, 0],
-                       c=[c for _ in range(pts.shape[0])],
-                       marker=m,
-                       s=s,
-                       label=gene)
-        ax.legend(framealpha=0.5)
+            sh = ax.scatter(pts[:, 1], pts[:, 0],
+                            c=[c for _ in range(pts.shape[0])],
+                            marker=m, s=s,
+                            label=gene)
+            shapes.append(sh)
+            labels.append(gene)
+        return shapes, labels
 
     def _plot_cells_mask(self, ax, z=0):
         assert (type(z) is int) or (z == 'mean')

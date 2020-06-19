@@ -73,7 +73,9 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
                 _, z = idx
                 cts = centers[centers[:, 2] == z, :2]
                 pos = [gp[gp[:, 2] == z, :2] for gp in gene_pos]
-                return [gene2cell_2d(cts, im2d, gp, dist_th) for gp in pos]
+                return [gene2cell_2d(cts, im2d, gp, dist_th)
+                        if gp.shape[0] > 0 else np.zeros((0, 2), cts.dtype)
+                        for gp in pos]
             chs = slide_over_z(img4d_, func, self.n_workers, stack_ch=False, stack_z=False)
             zs = chs[0]
             pos_per_gene = []

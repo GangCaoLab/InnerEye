@@ -17,8 +17,9 @@ dependencies:
       - h5py
       - scikit-image
       - scikit-learn
-      - kivy
       - pathos
       - bioformats
       - numba
       - networkx
+      - pybind11
+      - probreg
