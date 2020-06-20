@@ -61,8 +61,8 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
                 ax.legend(framealpha=0.5)
         if self.cell_assign is not None:
             self._plot_assign(ax)
-        plt.ylim(0, self.img.shape[0])
-        plt.xlim(0, self.img.shape[1])
+        ax.set_ylim(0, self.img.shape[0])
+        ax.set_xlim(0, self.img.shape[1])
         fig.tight_layout()
         if figpath:
             fig.savefig(figpath)
