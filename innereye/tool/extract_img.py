@@ -50,12 +50,14 @@ def _extract(src_uri, dst_uri):
         raise IOError(f"{src_uri} is in unsupported input format.")
 
 
-def extract_samples(json_path: str, dst_dir: str):
+def extract_samples(json_path: str, dst_dir: str,
+                    incremental: bool = True):
     """
     Extract sample images indecated by json config file to hdf5 format.
 
     :param json_path: Path to config json.
     :param dst_dir: Target directory to save extracted images.
+    :param incremental: Incremental extract.
     """
     with open(json_path) as f:
         samples = json.load(f)
@@ -69,6 +71,9 @@ def extract_samples(json_path: str, dst_dir: str):
         for fov_name, fov in fovs.items():
             log.info(f"\tFoV: {fov_name}")
             dst_f = osp.join(samp_dir, fov_name+'.h5')
+            if incremental and osp.exists(dst_f):
+                log.info(f"{dst_f} exist, skip {fov_name}.")
+                continue
             for idx, src_uri in enumerate(fov['cycles']):
                 dst_uri = f"{dst_f}::cycle_{idx}"
                 # start another process, prevent JVM canot start again

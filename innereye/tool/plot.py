@@ -1,4 +1,4 @@
-from .base import ChainTool, ImgIO, GenesIO, CellsIO
+from .base import ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO
 from ..lib.img.misc import get_img_2d
 
 import numpy as np
@@ -19,24 +19,40 @@ def marker_styles(cmap="hsv", seed=0):
         ix += 1
 
 
-class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
+class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
 
     def __init__(self, show_center=True):
         self.show_center = show_center
         self.img = None
+        self.spots = None
+        self.dimensions = None
         self.code2gene = None
         self.coordinates = None
         self.cells_mask = None
         self.cells_center = None
         self.figsize = None
         self.cell_assign = None
+        self._channels_select = []
+        self._z_select = []
 
     def background(self, cycle=0, channel='mean', z='mean'):
         assert type(cycle) is int
-        assert (type(channel) is int) or (channel == 'mean')
-        assert (type(z) is int) or (z == 'mean')
+        assert (type(channel) is int) or (channel == 'mean') or (channel == list)
+        assert (type(z) is int) or (z == 'mean') or (channel)
         im4d = self.cycles[cycle]
         self.img = get_img_2d(im4d, channel, z)
+        if type(channel) is int:
+            self._channels_select = [channel]
+        elif type(channel) is list:
+            self._channels_select = channel
+        else:
+            self._channels_select = list(range(im4d.shape[3]))
+        if type(z) is int:
+            self._z_select = [z]
+        elif type(channel) is list:
+            self._z_select = z
+        else:
+            self._z_select = list(range(im4d.shape[2]))
         return self
 
     def plot(self, figpath=None, figsize=(10, 10), legend_path="./legend.png"):
@@ -50,17 +66,12 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
             self._plot_cells_center(ax)
         if self.code2gene is not None:
             shapes, labels = self._plot_genes(ax)
-            if legend_path:
-                n = len(shapes)
-                fig_legend, ax_legend = plt.subplots(figsize=(2, 0.23*n))
-                ax_legend.legend(shapes, labels, loc=9)
-                ax_legend.axis('off')
-                fig_legend.tight_layout()
-                fig_legend.savefig(legend_path)
-            else:
-                ax.legend(framealpha=0.5)
-        if self.cell_assign is not None:
-            self._plot_assign(ax)
+            self._plot_legend(ax, legend_path, shapes, labels)
+            if self.cell_assign is not None:
+                self._plot_assign(ax)
+        elif self.spots is not None:
+            shapes, labels = self._plot_spots(ax)
+            self._plot_legend(ax, legend_path, shapes, labels)
         ax.set_ylim(0, self.img.shape[0])
         ax.set_xlim(0, self.img.shape[1])
         fig.tight_layout()
@@ -70,15 +81,30 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
             plt.show()
         return self
 
+    def _plot_legend(self, ax, legend_path, shapes, labels):
+        if legend_path:
+            n = len(shapes)
+            fig_legend, ax_legend = plt.subplots(figsize=(3, max(4.0, 0.25 * n)))
+            ax_legend.legend(shapes, labels, loc=9)
+            ax_legend.axis('off')
+            fig_legend.tight_layout()
+            fig_legend.savefig(legend_path)
+        else:
+            ax.legend(framealpha=0.5)
+
+    def _estimate_scatter_size(self):
+        s = 5 * (self.figsize[0] * self.figsize[1]) // 100
+        return s
+
     def _plot_genes(self, ax):
         marker_gen = marker_styles()
-        s = 5 * (self.figsize[0] * self.figsize[1]) // 100
+        s = self._estimate_scatter_size()
         shapes = []; labels = []
         for ix, gene in enumerate(self.code2gene.values()):
+            c, m = next(marker_gen)
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
-            c, m = next(marker_gen)
             sh = ax.scatter(pts[:, 1], pts[:, 0],
                             c=[c for _ in range(pts.shape[0])],
                             marker=m, s=s,
@@ -119,3 +145,26 @@ class Plot2d(ChainTool, ImgIO, GenesIO, CellsIO):
                             linewidth=0.5,
                             color='red',
                             alpha=0.6,)
+
+    def _plot_spots(self, ax):
+        marker_gen = marker_styles()
+        s = self._estimate_scatter_size()
+        shapes = []; labels = []
+        for ixcy, channels in enumerate(self.spots):
+            for ixch, coords in enumerate(channels):
+                c, m = next(marker_gen)
+                pts = coords[np.where(np.isin(coords[:, 2], self._z_select))[0]]
+                pts = pts[:, :2]
+                if pts.shape[0] == 0:
+                    continue
+                if ixch not in self._channels_select:
+                    continue
+                label = f"cycle_ix: {ixcy}, channel_ix: {ixch}"
+                sh = ax.scatter(pts[:, 1], pts[:, 0],
+                                c=[c for _ in range(pts.shape[0])],
+                                marker=m, s=s, alpha=0.5,
+                                label=label)
+                shapes.append(sh)
+                labels.append(label)
+        return shapes, labels
+

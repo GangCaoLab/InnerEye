@@ -86,6 +86,8 @@ class SpotsIO(object):
                 else:
                     msg += f"\tChannel index: {ixch}\n"
                 if show_z:
+                    if coords.shape[0] <= 0:
+                        continue
                     for z in np.unique(coords[:, 2]):
                         layer = coords[coords[:, 2] == z]
                         msg += f"\t\tz: {int(z)}\tcount: {layer.shape[0]}\n"
