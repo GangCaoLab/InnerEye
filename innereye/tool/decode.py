@@ -30,7 +30,7 @@ class Decode(ChainTool, SpotsIO, GenesIO):
 
     def parse(self,
               code_book: str,
-              channels: str = "AGCT",
+              channels: str = "ACGT",
               chars_per_cycle: int = 2,
               ):
         """Load codebook"""

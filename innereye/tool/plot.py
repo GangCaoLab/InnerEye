@@ -37,7 +37,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
 
     def background(self, cycle=0, channel='mean', z='mean'):
         assert type(cycle) is int
-        assert (type(channel) is int) or (channel == 'mean') or (channel == list)
+        assert (type(channel) is int) or (channel == 'mean') or (type(channel) is list)
         assert (type(z) is int) or (z == 'mean') or (channel)
         im4d = self.cycles[cycle]
         self.img = get_img_2d(im4d, channel, z)
@@ -49,7 +49,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             self._channels_select = list(range(im4d.shape[3]))
         if type(z) is int:
             self._z_select = [z]
-        elif type(channel) is list:
+        elif type(z) is list:
             self._z_select = z
         else:
             self._z_select = list(range(im4d.shape[2]))
@@ -72,7 +72,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         elif self.spots is not None:
             shapes, labels = self._plot_spots(ax)
             self._plot_legend(ax, legend_path, shapes, labels)
-        ax.set_ylim(0, self.img.shape[0])
+        ax.set_ylim(self.img.shape[0], 0)
         ax.set_xlim(0, self.img.shape[1])
         fig.tight_layout()
         if figpath:
