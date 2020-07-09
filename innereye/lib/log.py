@@ -4,7 +4,7 @@ MSG_FMT = "%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s"
 DATE_FMT = "%m/%d/%y %H:%M:%S"
 
 
-def set_global_logging(log_level=10, log_file=None,
+def set_global_logging(log_level=20, log_file=None,
                        msg_fmt: str = MSG_FMT,
                        date_fmt: str = DATE_FMT):
     """Set the global logging formats.

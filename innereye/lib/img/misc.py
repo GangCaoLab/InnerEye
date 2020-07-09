@@ -2,6 +2,7 @@ import typing as t
 
 import numpy as np
 from pathos.multiprocessing import ProcessingPool as Pool
+from numba import jit
 
 
 def slide_over_z(
@@ -91,3 +92,17 @@ def get_img_2d(im4d: np.ndarray,
     else:
         im2d = im3d[:, :, z]
     return im2d
+
+
+@jit(nopython=True)
+def extract_sub_2d(im2d, points, d, border_default=0):
+    w, h = im2d.shape
+    im2d_border = np.full((w + 2*d, h + 2*d), border_default, dtype=im2d.dtype)
+    im2d_border[d:d + w, d:d + h] = im2d
+    subs = []
+    for i in range(points.shape[0]):
+        x = points[i, 1]
+        y = points[i, 0]
+        sub = im2d_border[x:x+2*d+1, y:y+2*d+1]
+        subs.append(sub)
+    return subs

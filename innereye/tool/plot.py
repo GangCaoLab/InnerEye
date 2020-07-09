@@ -9,6 +9,10 @@ import typing as t
 
 from .base import ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO
 from ..lib.img.misc import get_img_2d
+from ..lib.log import print_arguments
+
+from logging import getLogger
+log = getLogger(__file__)
 
 
 def marker_styles(cmap="hsv", seed=0):
@@ -70,6 +74,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
     def background(self, cycle=0, channel='mean', z='mean',
                    show_cells_mask=True, show_cells_center=True,
                    show_gene=True, show_spots=True):
+        print_arguments(log.info)
         assert type(cycle) is int
         assert (type(channel) is int) or (channel == 'mean') or (type(channel) is list)
         assert (type(z) is int) or (z == 'mean') or (type(z) is list)
@@ -85,6 +90,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         return self
 
     def plot(self, figpath=None, figsize=(10, 10), n_cols_max=2, legend_path=None):
+        print_arguments(log.info)
         if figpath:
             fig = self._draw(figsize, n_cols_max, legend_path)
             fig.tight_layout()
