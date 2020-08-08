@@ -72,7 +72,10 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
                         continue
                     len_all = len(self.cycles) if idx == 4 else img.shape[idx]
                     slices[idx] = [i for i in range(len_all) if i not in selectors[idx]]
-            new_img = img[slices[0], slices[1], slices[2], slices[3]]
+            new_img = img[slices[0], :, :, :]
+            new_img = new_img[:, slices[1], :, :]
+            new_img = new_img[:, :, slices[2], :]
+            new_img = new_img[:, :, :, slices[3]]
             if (cy is None) or (cy_idx in slices[-1]):
                 new_cycles.append(new_img)
         self.set_new(new_cycles)

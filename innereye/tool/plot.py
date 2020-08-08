@@ -131,14 +131,17 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         if img is not None:
             ax.imshow(img, cmap='gray')
         if conf.show_cells_mask and (self.cells_mask is not None):
-            self._plot_cells_mask(ax)
+            for z in conf.z:
+                self._plot_cells_mask(ax, z)
         if conf.show_cells_center and (self.cells_center is not None):
-            self._plot_cells_center(ax)
+            for z in conf.z:
+                self._plot_cells_center(ax, z)
         if conf.show_genes and (self.code2gene is not None):
             shapes, labels = self._plot_genes(ax)
             self._plot_legend(ax, legend_path, shapes, labels)
             if self.cell_assign is not None:
-                self._plot_assign(ax)
+                for z in conf.z:
+                    self._plot_assign(ax, z)
         elif conf.show_spots and (self.spots is not None):
             shapes, labels = self._plot_spots(ax, conf.z, conf.channel)
             self._plot_legend(ax, legend_path, shapes, labels)
@@ -199,10 +202,12 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
                    s=s,
                    )
 
-    def _plot_assign(self, ax):
+    def _plot_assign(self, ax, z=0):
         for ix, _ in enumerate(self.code2gene.values()):
             assign = self.cell_assign[ix]
-            pts = self.coordinates[ix][:, :2]
+            assign = assign[assign[:, 2] == z][:, :2]
+            pts = self.coordinates[ix]
+            pts = pts[pts[:, 2] == z][:, :2]
             for i in range(pts.shape[0]):
                 from_ = pts[i]
                 to_ = assign[i]

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from .base import ChainTool, ImgIO, GenesIO, CellsIO
 from ..lib.img.misc import slide_over_z, get_img_3d
@@ -105,12 +106,36 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
             pos_per_gene = []
             for z in range(len(zs)):
                 for i, zsg in enumerate(zs[z]):
+                    z_ = np.full((zsg.shape[0], 1), z)
+                    pos = np.c_[zsg, z_]
                     if len(pos_per_gene) <= i:
-                        pos_per_gene.append(zsg)
+                        pos_per_gene.append(pos)
                     else:
                         old = pos_per_gene[i]
-                        pos_per_gene[i] = np.concatenate([old, zsg])
+                        pos_per_gene[i] = np.concatenate([old, pos])
             self.cell_assign = pos_per_gene
         else:
             raise NotImplementedError
+        return self
+
+    def cell_quanta(self, path):
+        """Output cell quanta result table."""
+        print_arguments(log.info)
+        cells = {str(tuple([float(c[i]) for i in range(3)])): {} for c in self.cells_center}
+        if self.z_mode == "slide":
+            for g_idx, (_, gene) in enumerate(self.code2gene.items()):
+                col = []
+                assign = self.cell_assign[g_idx]
+                centers, cnts = np.unique(assign, return_counts=True, axis=0)
+                non_nan_idxs = ~np.isnan(centers[:,0])
+                centers = centers[non_nan_idxs]
+                cnts = cnts[non_nan_idxs]
+                for i, c in enumerate(centers):
+                    cell = str(tuple([float(c[i]) for i in range(3)]))
+                    cells[cell][gene] = cnts[i]
+        else:
+            raise NotImplementedError
+        df = pd.DataFrame(cells).T
+        sep = "," if path.endswith(".csv") else "\t"
+        df.to_csv(path, sep=sep)
         return self
