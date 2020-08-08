@@ -2,17 +2,18 @@ from collections import Iterable
 import typing as t
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
-from .base import ChainTool, ImgIO
+from .base import ChainTool, ImgIO, Resetable
 from logging import getLogger
 
 log = getLogger(__file__)
 
 
-class PreProcessing(ChainTool, ImgIO):
+class PreProcessing(ChainTool, ImgIO, Resetable):
     """Image pre-processing"""
 
     def __init__(self):
         self.cycles = None
+        Resetable.__init__(self, "cycles")
 
     def crop(self,
              x: t.Optional[t.Tuple] = None,
@@ -39,7 +40,8 @@ class PreProcessing(ChainTool, ImgIO):
         sx, sy, sz, sch, scy = [
             slice(*i) if isinstance(i, Iterable) else slice(i)
             for i in (x, y, z, ch, cy)]
-        self.cycles = [img[sy, sx, sz, sch] for img in self.cycles][scy]
+        cycles = [img[sy, sx, sz, sch] for img in self.cycles][scy]
+        self.set_new(cycles)
         return self
 
     def select(self,
@@ -71,22 +73,24 @@ class PreProcessing(ChainTool, ImgIO):
                     len_all = len(self.cycles) if idx == 4 else img.shape[idx]
                     slices[idx] = [i for i in range(len_all) if i not in selectors[idx]]
             new_img = img[slices[0], slices[1], slices[2], slices[3]]
-            if cy and cy_idx in slices[-1]:
+            if (cy is None) or (cy_idx in slices[-1]):
                 new_cycles.append(new_img)
-        self.cycles = new_cycles
+        self.set_new(new_cycles)
         return self
 
     def z_stack(self):
         """Stack along z-axis."""
         print_arguments(log.info)
-        self.cycles = [arr.mean(axis=2, keepdims=True) for arr in self.cycles]
+        cycles = [arr.mean(axis=2, keepdims=True) for arr in self.cycles]
+        self.set_new(cycles)
         return self
 
     def adjust_gamma(self, gamma=1.5):
         """Perform gamma-adjust on image."""
         from skimage.exposure import adjust_gamma
         print_arguments(log.info)
-        self.cycles = [adjust_gamma(arr, gamma) for arr in self.cycles]
+        cycles = [adjust_gamma(arr, gamma) for arr in self.cycles]
+        self.set_new(cycles)
         return self
 
     def registration(self,
@@ -100,7 +104,7 @@ class PreProcessing(ChainTool, ImgIO):
         reg = Registration2d(self.cycles, *args)
         reg.estimate_transform()
         aligned = reg.apply()
-        self.cycles = aligned
+        self.set_new(aligned)
         return self
 
     read = ImgIO.read_img

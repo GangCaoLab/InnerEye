@@ -190,3 +190,20 @@ class CellsIO(object):
         write_assign(path, list(self.code2gene.values()), self.cell_assign)
         return self
 
+
+class Resetable(object):
+    def __init__(self, attr_name: str):
+        self._attr_name = attr_name
+        self._old_attr = None
+
+    def set_new(self, new):
+        self._old_attr = getattr(self, self._attr_name)
+        setattr(self, self._attr_name, new)
+
+    def reset(self):
+        setattr(self, self._attr_name, self._old_attr)
+        return self
+
+    def clear_old(self):
+        self._old_attr = None
+    

@@ -4,11 +4,28 @@ from .base import ChainTool, ImgIO, GenesIO, CellsIO
 from ..lib.img.misc import slide_over_z, get_img_3d
 from ..lib.misc import local_arguments
 from ..lib.log import print_arguments
-from ..lib.img.cells import otsu_watershed_2d, gene2cell_2d
+from ..lib.img.cells import otsu_watershed_2d, otsu_cc_center_2d, gene2cell_2d
 
 
 from logging import getLogger
 log = getLogger(__file__)
+
+
+def func_for_slide_call_cell(func, args, img4d, channel, z_mode, n_workers):
+    img3d = get_img_3d(img4d, channel)
+    img4d_ = img3d[:, :, :, np.newaxis]
+    if z_mode == 'slide':
+        f = lambda im2d, _: func(im2d, *args)
+        chs = slide_over_z(img4d_, f, n_workers, stack_z=False, stack_ch=False)
+        zs = chs[0]
+        masks_, centers_ = [], []
+        for z, (cts, mask) in enumerate(zs):
+            z_ = np.full((cts.shape[0], 1), z)
+            centers_.append(np.c_[cts, z_])
+            masks_.append(mask)
+        return np.concatenate(centers_), np.stack(masks_, -1)
+    else:
+        raise NotImplementedError
 
 
 class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
@@ -33,33 +50,40 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
         self.code2gene = None
         self.coordinates = None
 
-    def call_cells(self,
-                   gaussian_sigma: int = 8,
-                   min_cc_size: int = 500,
-                   merge_radius: int = 10,
-                   ):
-        """Calculate all cell's center and mask."""
+    def call_with_dist_watershed(self,
+            gaussian_sigma: int = 8,
+            min_cc_size: int = 500,
+            merge_radius: int = 10,
+        ):
+        """Calculate all cell's center and mask via dist_watershed method."""
         print_arguments(log.info)
-        img4d = self.cycles[self.ref_cycle]
-        img3d = get_img_3d(img4d, self.channel)
-        img4d_ = img3d[:, :, :, np.newaxis]
         args = local_arguments(keywords=False)
-        if self.z_mode == 'slide':
-            f = lambda im2d, _: otsu_watershed_2d(im2d, *args)
-            chs = slide_over_z(img4d_, f, self.n_workers, stack_z=False, stack_ch=False)
-            zs = chs[0]
-            masks_, centers_ = [], []
-            for z, (cts, mask) in enumerate(zs):
-                z_ = np.full((cts.shape[0], 1), z)
-                centers_.append(np.c_[cts, z_])
-                masks_.append(mask)
-            self.cells_center = np.concatenate(centers_)
-            self.cells_mask = np.stack(masks_, -1)
-        else:
-            raise NotImplementedError
+        im4d = self.cycles[self.ref_cycle]
+        self.cells_center, self.cells_mask = func_for_slide_call_cell(
+            otsu_watershed_2d, args,
+            im4d, self.channel, self.z_mode, self.n_workers
+        )
         return self
 
-    def gene2cell(self, dist_th=50):
+    def call_with_cc_center(self,
+            gaussian_sigma: int = 8,
+            min_cc_size: int = 500,
+        ):
+        """Calculate all cell's center and mask via cc_center method."""
+        print_arguments(log.info)
+        args = local_arguments(keywords=False)
+        im4d = self.cycles[self.ref_cycle]
+        self.cells_center, self.cells_mask = func_for_slide_call_cell(
+            otsu_cc_center_2d, args,
+            im4d, self.channel, self.z_mode, self.n_workers
+        )
+        return self
+
+    def gene2cell(self,
+            dist_th=50,
+            max_iter=20,
+            iter_dist_step=20,
+        ):
         """Assign gene to cell."""
         print_arguments(log.info)
         if (self.code2gene is None) or (self.coordinates is None):
@@ -73,7 +97,7 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
                 _, z = idx
                 cts = centers[centers[:, 2] == z, :2]
                 pos = [gp[gp[:, 2] == z, :2] for gp in gene_pos]
-                return [gene2cell_2d(cts, im2d, gp, dist_th)
+                return [gene2cell_2d(cts, im2d, gp, dist_th, max_iter, iter_dist_step)
                         if gp.shape[0] > 0 else np.zeros((0, 2), cts.dtype)
                         for gp in pos]
             chs = slide_over_z(img4d_, func, self.n_workers, stack_ch=False, stack_z=False)

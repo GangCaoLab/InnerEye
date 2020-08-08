@@ -110,10 +110,13 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         nrows = 1 + ((n-1) // n_cols_max)
         ncols = min(n, n_cols_max)
         gs = gridspec.GridSpec(nrows=nrows, ncols=ncols, wspace=0.2, hspace=0.2)
-        _l_path = os.path.splitext(legend_path)
+        _l_path = os.path.splitext(legend_path) if legend_path else None
         axes = []
         for i in range(n):
-            l_path = _l_path[0] + f".{i}" + _l_path[1] if n > 1 else legend_path
+            if _l_path:
+                l_path = _l_path[0] + f".{i}" + _l_path[1] if n > 1 else legend_path
+            else:
+                l_path = None
             y = i // n_cols_max
             x = i % n_cols_max
             if i > 0:
