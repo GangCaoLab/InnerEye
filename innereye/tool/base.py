@@ -103,11 +103,18 @@ class GenesIO(object):
     def read_genes(self, path: str):
         """Read decode result from disk"""
         print_arguments(log.info)
-        genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene = read_decode(path)
+        (
+            genes, points_per_gene, dists_per_gene,
+            barcodes_per_gene, chidxs_per_gene,
+            unmatch_coordinates, unmatch_dists, unmatch_chidxs
+        ) = read_decode(path)
         self.code2gene = od(zip(barcodes_per_gene, genes))
         self.coordinates = points_per_gene
         self.dists_per_gene = dists_per_gene
         self.chidxs_per_gene = chidxs_per_gene
+        self.coordinates_unmatch = unmatch_coordinates
+        self.dists_per_unmatch = unmatch_dists
+        self.chidxs_per_unmatch = unmatch_chidxs
         return self
 
     def write_genes(self, path: str):
@@ -119,6 +126,9 @@ class GenesIO(object):
                      self.dists_per_gene,
                      list(self.code2gene.keys()),
                      self.chidxs_per_gene,
+                     self.coordinates_unmatch,
+                     self.dists_unmatch,
+                     self.chidxs_unmatch,
                      )
         return self
 

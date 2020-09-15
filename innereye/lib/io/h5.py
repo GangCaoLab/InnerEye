@@ -103,7 +103,11 @@ def write_decode(path: str,
                  points_per_gene: t.List[np.ndarray],
                  dists_per_gene: t.List[np.ndarray],
                  barcodes_per_gene: t.Optional[t.List[str]],
-                 chidxs_per_gene: t.Optional[t.List[str]]):
+                 chidxs_per_gene: t.Optional[t.List[str]],
+                 coordinates_unmatch: np.ndarray,
+                 dists_unmatch: np.ndarray,
+                 chidxs_unmatch: np.ndarray,
+                 ):
     """Write decode result to hdf5 file."""
     with h5py.File(path, 'w') as f:
         g_p = f.create_group("points")
@@ -115,6 +119,10 @@ def write_decode(path: str,
             f.attrs['barcodes'] = barcodes_per_gene
         if chidxs_per_gene:
             f.attrs['channel_indexes'] = chidxs_per_gene
+        unmatch = f.create_group("unmatch")
+        unmatch.create_dataset("coordinates", data=coordinates_unmatch)
+        unmatch.create_dataset("dists", data=dists_unmatch)
+        unmatch.create_dataset("chidxs", data=chidxs_unmatch)
 
 
 def read_decode(path: str) -> t.Tuple[
@@ -123,6 +131,9 @@ def read_decode(path: str) -> t.Tuple[
     t.List[np.ndarray],
     t.Optional[t.List[str]],
     t.Optional[t.List[str]],
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
     ]:
     """Read decode result to hdf5 file."""
     genes = []
@@ -130,6 +141,9 @@ def read_decode(path: str) -> t.Tuple[
     dists_per_gene = []
     barcodes_per_gene = []
     chidxs_per_gene = []
+    unmatch_coordinates = None
+    unmatch_dists = None
+    unmatch_chidxs = None
     with h5py.File(path, 'r') as f:
         g_p = f['points']
         g_d = f['distances']
@@ -141,7 +155,12 @@ def read_decode(path: str) -> t.Tuple[
             barcodes_per_gene = f.attrs['barcodes']
         if 'channel_indexes' in f.attrs:
             chidxs_per_gene = f.attrs['channel_indexes']
-    return genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene
+        unmatch = f['unmatch']
+        unmatch_coordinates = unmatch["coordinates"][()]
+        unmatch_dists = unmatch["dists"][()]
+        unmatch_chidxs = unmatch["chidxs"][()]
+    return (genes, points_per_gene, dists_per_gene, barcodes_per_gene, chidxs_per_gene,
+            unmatch_coordinates, unmatch_dists, unmatch_chidxs)
 
 
 def write_cells(path: str,

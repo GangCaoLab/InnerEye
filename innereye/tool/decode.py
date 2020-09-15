@@ -3,6 +3,8 @@ from ..lib.log import print_arguments
 from ..lib.spots.decode import DistGraphDecode
 from ..lib.barcode import read_codebook, get_code2chidxs
 
+import numpy as np
+
 import logging
 
 
@@ -27,6 +29,9 @@ class Decode(ChainTool, SpotsIO, GenesIO):
         self.coordinates = None
         self.dists_per_gene = None
         self.chidxs_per_gene = None
+        self.coordinates_unmatch = None
+        self.dists_unmatch = None
+        self.chidxs_unmatch = None
 
     def parse(self,
               code_book: str,
@@ -60,19 +65,30 @@ class Decode(ChainTool, SpotsIO, GenesIO):
     def dist_graph(self, d: float):
         """Decode via distance graph"""
         print_arguments(log.info)
-        self._check_codes_and_spots()
         self.dc = DistGraphDecode(self.spots)
+        self._check_codes_and_spots()
         self.coordinates = []
         self.dists_per_gene = []
         self.chidxs_per_gene = []
+
+        pos, ch_idxes, dists = self.dc.decode(d)
+        matched_idx = []
         for code in self.code2gene.keys():
             gene = self.code2gene[code]
-            log.debug(f"Decoding gene {gene}")
+            log.debug(f"Read decode result of gene {gene}")
             chidxs = self.code2chidxs[code]
-            pts, d_sum = self.dc.decode(chidxs, d)
+            idx = np.where((ch_idxes == chidxs).all(1))[0]
+            pts = pos[idx]
+            d_sum = dists[idx]
+            matched_idx.append(idx)
             self.coordinates.append(pts)
             self.dists_per_gene.append(d_sum)
             self.chidxs_per_gene.append(chidxs)
+        matched_idx = np.concatenate(matched_idx)
+        self.coordinates_unmatch = pos[~matched_idx]
+        self.dists_unmatch = dists[~matched_idx]
+        self.chidxs_unmatch = ch_idxes[~matched_idx]
+        log.info(f"Readed num: {matched_idx.shape[0]}, Unmatched num: {pos.shape[0] - matched_idx.shape[0]}")
         return self
 
     read = SpotsIO.read_spots
