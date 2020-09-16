@@ -6,6 +6,7 @@ import matplotlib.gridspec as gridspec
 from dataclasses import dataclass
 import random
 import typing as t
+import json
 
 from .base import ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO
 from ..lib.img.misc import get_img_2d
@@ -66,24 +67,39 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         self.img_path = None
         self.imgs = []
         self.confs: t.List[Img2dConf] = []
+        self.color_groups = {}
+        self.gene2group = {}
 
     def read_img(self, path: str):
         self.img_path = path
         return super().read_img(path)
 
+    def read_colorgroup(self, path: str):
+        with open(path) as f:
+            grps = json.load(f)
+            for grp in grps:
+                self.color_groups[grp['name']] = grp
+                for g in grp['genes']:
+                    self.gene2group[g] = grp
+        return self
+
     def background(self, cycle=0, channel='mean', z='mean',
                    show_cells_mask=True, show_cells_center=True,
                    show_gene=True, show_spots=True):
         print_arguments(log.info)
-        assert type(cycle) is int
+        assert (type(cycle) is int) or (channel == 'mean') or (type(channel) is list)
         assert (type(channel) is int) or (channel == 'mean') or (type(channel) is list)
         assert (type(z) is int) or (z == 'mean') or (type(z) is list)
-        im4d = self.cycles[cycle]
+        if type(cycle) is int:
+            cycle = [cycle]
+        elif cycle == "mean":
+            cycle = list(range(len(self.cycles)))
+        im4d = sum([self.cycles[i] for i in cycle]) / len(cycle)
         self.img = get_img_2d(im4d, channel, z)
         self.imgs.append(self.img)
         _channels_select = _compose_list(channel, int, list(range(im4d.shape[3])))
         _z_select = _compose_list(z, int, list(range(im4d.shape[2])))
-        conf = Img2dConf(self.img_path, [cycle], _channels_select, _z_select,
+        conf = Img2dConf(self.img_path, cycle, _channels_select, _z_select,
                          show_cells_mask, show_cells_center,
                          show_gene, show_spots)
         self.confs.append(conf)
@@ -143,7 +159,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
                 for z in conf.z:
                     self._plot_assign(ax, z)
         elif conf.show_spots and (self.spots is not None):
-            shapes, labels = self._plot_spots(ax, conf.z, conf.channel)
+            shapes, labels = self._plot_spots(ax, conf.cycle, conf.z, conf.channel)
             self._plot_legend(ax, legend_path, shapes, labels)
         ax.set_ylim(img.shape[0], 0)
         ax.set_xlim(0, img.shape[1])
@@ -171,6 +187,11 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         shapes = []; labels = []
         for ix, gene in enumerate(self.code2gene.values()):
             c, m = next(marker_gen)
+            if self.gene2group:
+                if gene in self.gene2group:
+                    c = self.gene2group[gene]['color']
+                else:
+                    c = '#aaaaaa'
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
@@ -217,11 +238,13 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
                             color='red',
                             alpha=0.6,)
 
-    def _plot_spots(self, ax, z_select, channels_select):
+    def _plot_spots(self, ax, cycle_select, z_select, channels_select):
         marker_gen = marker_styles()
         s = self._estimate_scatter_size()
         shapes = []; labels = []
         for ixcy, channels in enumerate(self.spots):
+            if ixcy not in cycle_select:
+                continue
             for ixch, coords in enumerate(channels):
                 c, m = next(marker_gen)
                 pts = coords[np.where(np.isin(coords[:, 2], z_select))[0]]

@@ -55,6 +55,7 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
             gaussian_sigma: int = 8,
             min_cc_size: int = 500,
             merge_radius: int = 10,
+            otsu_factor: float = 1.0,
         ):
         """Calculate all cell's center and mask via dist_watershed method."""
         print_arguments(log.info)
@@ -69,6 +70,7 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
     def call_with_cc_center(self,
             gaussian_sigma: int = 8,
             min_cc_size: int = 500,
+            otsu_factor: float = 1.0,
         ):
         """Calculate all cell's center and mask via cc_center method."""
         print_arguments(log.info)

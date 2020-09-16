@@ -27,9 +27,10 @@ def seg_watershed_2d(
 def otsu_mask(
         im2d: np.ndarray,
         gaussian_sigma: int = 8,
+        factor: float = 1.0,
     ) -> np.ndarray:
     sg = ndi.gaussian_filter(im2d, gaussian_sigma)
-    th = threshold_otsu(sg)
+    th = threshold_otsu(sg) * factor
     mask = sg > th
     return mask
 
@@ -39,10 +40,11 @@ def otsu_watershed_2d(
         gaussian_sigma: int = 8,
         min_cc_size: int = 500,
         merge_radius: int = 10,
+        otsu_factor: float = 1.0,
     ) -> t.Tuple[np.ndarray, np.ndarray]:
     """Calculate cell center coordinates and mask,
     using otsu watershed method."""
-    mask = otsu_mask(im2d, gaussian_sigma)
+    mask = otsu_mask(im2d, gaussian_sigma, otsu_factor)
     mask = remove_small_objects(mask, min_size=min_cc_size)
     dist = ndi.distance_transform_edt(mask)
     local_peaks = call_peaks(dist, neighbor_thresh=0.75)
@@ -54,10 +56,11 @@ def otsu_cc_center_2d(
         im2d: np.ndarray,
         gaussian_sigma: int = 8,
         min_cc_size: int = 500,
+        otsu_factor: float = 1.0,
     ) -> t.Tuple[np.ndarray, np.ndarray]:
     """Caclulate cell center coordinates and mask,
     by finding connected components's center"""
-    mask = otsu_mask(im2d, gaussian_sigma)
+    mask = otsu_mask(im2d, gaussian_sigma, otsu_factor)
     mask = remove_small_objects(mask, min_size=min_cc_size)
     label_im = label(mask)
     ccs = regionprops(label_im)
