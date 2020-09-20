@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import random
 import typing as t
 import json
+from matplotlib.patches import Patch
 
 from .base import ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO
 from ..lib.img.misc import get_img_2d
@@ -81,6 +82,17 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
                 self.color_groups[grp['name']] = grp
                 for g in grp['genes']:
                     self.gene2group[g] = grp
+        return self
+
+    def plot_colorgroup_label(self, path: str):
+        legend_elements = [
+            Patch(facecolor=grp['color'], label=grp_name)
+            for grp_name, grp in self.color_groups.items()
+        ]
+        fig, ax = plt.subplots()
+        ax.legend(handles=legend_elements, loc='center')
+        ax.axis('off')
+        fig.savefig(path)
         return self
 
     def background(self, cycle=0, channel='mean', z='mean',
