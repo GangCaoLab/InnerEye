@@ -4,6 +4,7 @@ from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
 from .base import ChainTool, ImgIO, Resetable
 from logging import getLogger
+from ..lib.img.transform import scale_to_255, bright_range_transform
 
 log = getLogger(__file__)
 
@@ -108,6 +109,18 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         reg.estimate_transform()
         aligned = reg.apply()
         self.set_new(aligned)
+        return self
+
+    def scale_to_255(self):
+        print_arguments(log.info)
+        cycles = [scale_to_255(c) for c in self.cycles]
+        self.set_new(cycles)
+        return self
+
+    def bright_range_transform(self, bright_range):
+        print_arguments(log.info)
+        cycles = [bright_range_transform(c, bright_range) for c in self.cycles]
+        self.set_new(cycles)
         return self
 
     read = ImgIO.read_img

@@ -17,6 +17,7 @@ Install with pip command.::
    :caption: Contents:
 
    tools
+   callspots
 
 
 

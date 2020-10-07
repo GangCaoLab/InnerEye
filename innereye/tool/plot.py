@@ -117,10 +117,10 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         self.confs.append(conf)
         return self
 
-    def plot(self, figpath=None, figsize=(10, 10), n_cols_max=2, legend_path=None):
+    def plot(self, figpath=None, figsize=(10, 10), n_cols_max=2, legend_path=None, marker_size=None):
         print_arguments(log.info)
         if figpath:
-            fig = self._draw(figsize, n_cols_max, legend_path)
+            fig = self._draw(figsize, n_cols_max, legend_path, marker_size)
             fig.tight_layout()
             fig.savefig(figpath)
         else:
@@ -131,7 +131,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             app.exec()
         return self
 
-    def _draw(self, figsize, n_cols_max, legend_path):
+    def _draw(self, figsize, n_cols_max, legend_path, marker_size=None):
         self.figsize = figsize
         fig = plt.figure(figsize=figsize)
         n = len(self.confs)
@@ -152,10 +152,10 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             else:
                 ax = fig.add_subplot(gs[y, x])
             axes.append(ax)
-            self._draw_one(ax, self.imgs[i], self.confs[i], l_path)
+            self._draw_one(ax, self.imgs[i], self.confs[i], l_path, marker_size)
         return fig
 
-    def _draw_one(self, ax, img, conf: Img2dConf, legend_path):
+    def _draw_one(self, ax, img, conf: Img2dConf, legend_path, marker_size=None):
         if img is not None:
             ax.imshow(img, cmap='gray')
         if conf.show_cells_mask and (self.cells_mask is not None):
@@ -165,7 +165,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             for z in conf.z:
                 self._plot_cells_center(ax, z)
         if conf.show_genes and (self.code2gene is not None):
-            shapes, labels = self._plot_genes(ax)
+            shapes, labels = self._plot_genes(ax, marker_size)
             self._plot_legend(ax, legend_path, shapes, labels)
             if self.cell_assign is not None:
                 for z in conf.z:
@@ -193,23 +193,31 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         s = 5 * (self.figsize[0] * self.figsize[1]) // 100
         return s
 
-    def _plot_genes(self, ax):
+    def _plot_genes(self, ax, marker_size=None):
         marker_gen = marker_styles()
-        s = self._estimate_scatter_size()
+        if marker_size:
+            s = marker_size
+        else:
+            s = self._estimate_scatter_size()
         shapes = []; labels = []
         for ix, gene in enumerate(self.code2gene.values()):
             c, m = next(marker_gen)
             if self.gene2group:
                 if gene in self.gene2group:
-                    c = self.gene2group[gene]['color']
+                    grp = self.gene2group[gene]
+                    c = grp['color']
+                    if 'shape' in grp:
+                        m = grp['shape']
                 else:
                     c = '#aaaaaa'
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
             sh = ax.scatter(pts[:, 1], pts[:, 0],
-                            c=[c for _ in range(pts.shape[0])],
+                            edgecolor=[c for _ in range(pts.shape[0])],
                             marker=m, s=s,
+                            facecolor='none',
+                            linewidths=0.5,
                             label=gene)
             shapes.append(sh)
             labels.append(gene)
