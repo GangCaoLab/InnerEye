@@ -1,3 +1,4 @@
+import os
 import typing as t
 
 MSG_FMT = "%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s"
@@ -70,3 +71,17 @@ def print_arguments(print_func: t.Callable = print):
     msg = head + params
     print_func(msg)
 
+
+def get_tmp_dir() -> str:
+    prefix = "./.innereye"
+    osp = os.path
+    i = 0
+    tmp = lambda i: f"{prefix}.{i}"
+    while osp.exists(tmp(i)):
+        i += 1
+    tmp_dir = tmp(i)
+    os.mkdir(tmp_dir)
+    return tmp_dir
+
+
+TMP_DIR = get_tmp_dir()

@@ -4,7 +4,7 @@ def scale_to_255(img):
     img_ = img * 255 / img.max()
     return img_
 
-def bright_range_transform(img, bright_range):
+def bright_range_transform(img, bright_range) -> np.ndarray:
     """
     Scale the bright range (m, M) in the image
     to (0, 255).

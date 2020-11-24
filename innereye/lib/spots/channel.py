@@ -7,6 +7,7 @@ import numpy as np
 from skimage.morphology import watershed
 from skimage.morphology import diamond, ball, dilation
 from skimage.measure import label
+from sklearn.neighbors import KDTree
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from .misc import coordinates_to_mask, cc_centroids
@@ -135,3 +136,47 @@ def channel_merge_slidez(spots: t.List[np.ndarray],
                 merged.append(pts_)
     return merged, combs
 
+
+def channel_merge_kdtree(
+    spots: t.List[np.ndarray],
+    radius: float = 2,
+    ) -> t.Tuple[t.List[np.ndarray],
+                 t.List[t.List[int]]]:
+    # input checks
+    assert all([pts.shape[1] == spots[0].shape[1] for pts in spots[1:]])
+    dim = spots[0].shape[1]
+    assert 2 <= dim <= 3
+
+    d_lim = radius * 2
+
+    combs = channel_combinations(list(range(len(spots))), 2, dangling=True)
+    results = []
+    trees = [KDTree(ch) for ch in spots]
+    used_idx = [[] for _ in spots]
+    for i, j in combs:
+        if i == j: continue
+        tree = trees[i]
+        ch1, ch2 = spots[i], spots[j]
+        d, ix1_ = tree.query(ch2)
+        lt_d = d <= d_lim
+        ix1 = ix1_[lt_d]
+        pts1 = ch1[ix1]
+        ix2 = np.where(lt_d)[0]
+        pts2 = ch2[ix2]
+        pts = (pts1 + pts2) / 2
+        results.append(pts)
+        used_idx[i].append(ix1)
+        used_idx[j].append(ix2)
+    for i, idxs in enumerate(used_idx):
+        idx = np.unique(np.concatenate(idxs))
+        used_idx[i] = idx
+    for i, j in combs:
+        if i != j: continue
+        ch = spots[i]
+        idx_used = used_idx[i]
+        mask = np.full(ch.shape[0], True)
+        mask[idx_used] = False
+        idx_unused = np.where(mask)[0]
+        pts = ch[idx_unused]
+        results.append(pts)
+    return results, combs

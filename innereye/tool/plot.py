@@ -28,6 +28,12 @@ def marker_styles(cmap="hsv", seed=0):
         yield cmap_(random.random()), markers[ix % len(markers)]
         ix += 1
 
+def is_nonfilled_marker(m):
+    if m in ['+', 'x']:
+        return True
+    else:
+        return False
+
 
 @dataclass
 class Img2dConf:
@@ -117,12 +123,14 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         self.confs.append(conf)
         return self
 
-    def plot(self, figpath=None, figsize=(10, 10), n_cols_max=2, legend_path=None, marker_size=None):
+    def plot(self, figpath=None, ret_fig=False, figsize=(10, 10), n_cols_max=2, legend_path=None, marker_size=None):
         print_arguments(log.info)
         if figpath:
             fig = self._draw(figsize, n_cols_max, legend_path, marker_size)
-            fig.tight_layout()
             fig.savefig(figpath)
+        elif ret_fig:
+            fig = self._draw(figsize, n_cols_max, legend_path, marker_size)
+            return fig
         else:
             from ..lib.ui import MainWindow
             from PyQt5 import QtWidgets
@@ -213,12 +221,20 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
-            sh = ax.scatter(pts[:, 1], pts[:, 0],
-                            edgecolor=[c for _ in range(pts.shape[0])],
-                            marker=m, s=s,
-                            facecolor='none',
-                            linewidths=0.5,
-                            label=gene)
+            if is_nonfilled_marker(m):
+                sh = ax.scatter(pts[:, 1], pts[:, 0],
+                                c=[c for _ in range(pts.shape[0])],
+                                marker=m, s=s,
+                                alpha=0.7,
+                                label=gene)
+            else:
+                sh = ax.scatter(pts[:, 1], pts[:, 0],
+                                edgecolor=[c for _ in range(pts.shape[0])],
+                                marker=m, s=s,
+                                facecolor='none',
+                                linewidths=0.5,
+                                alpha=0.7,
+                                label=gene)
             shapes.append(sh)
             labels.append(gene)
         return shapes, labels
@@ -282,3 +298,17 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
                 labels.append(label)
         return shapes, labels
 
+
+def cycles_show(cycles, cy, ch, z, figsize=(12,12)):
+    im4d = cycles[cy]
+    if isinstance(ch, int):
+        im3d = im4d[:,:,:,ch]
+    else:
+        im3d = np.mean(im4d, axis=-1)
+    if isinstance(z, int):
+        im2d = im3d[:,:,z]
+    else:
+        im2d = np.mean(im3d, axis=-1)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(im2d)
+    return fig, ax

@@ -119,7 +119,46 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
 
     def bright_range_transform(self, bright_range):
         print_arguments(log.info)
-        cycles = [bright_range_transform(c, bright_range) for c in self.cycles]
+        import numpy as np
+        if isinstance(bright_range, tuple):
+            cycles = [bright_range_transform(c, bright_range) for c in self.cycles]
+        elif isinstance(bright_range, list):
+            cycles = []
+            for im4d in self.cycles:
+                assert len(bright_range) == im4d.shape[-1]
+                im3d_chs = []
+                for ixch in range(im4d.shape[-1]):
+                    im3d_ch = im4d[:,:,:,ixch]
+                    rg = bright_range[ixch]
+                    if rg is not None:
+                        im3d_ch = bright_range_transform(im3d_ch, rg)
+                    im3d_chs.append(im3d_ch)
+                im4d_t = np.stack(im3d_chs, -1)
+                cycles.append(im4d_t)
+        else:
+            raise ValueError("bright_range should be tuple or list of tuples")
+        self.set_new(cycles)
+        return self
+
+    def gaussian_filter(self, sigma):
+        print_arguments(log.info)
+        import scipy.ndimage as ndi
+        import numpy as np
+        if isinstance(sigma, float) or isinstance(sigma, int):
+            sigma = [sigma for _ in range(self.cycles[0].shape[-1])]
+        assert isinstance(sigma, list)
+        cycles = []
+        for im4d in self.cycles:
+            assert len(sigma) == im4d.shape[-1]
+            im3d_chs = []
+            for ixch in range(im4d.shape[-1]):
+                im3d_ch = im4d[:,:,:,ixch]
+                sm = sigma[ixch]
+                if sm is not None:
+                    im3d_ch = ndi.gaussian_filter(im3d_ch, sm)
+                im3d_chs.append(im3d_ch)
+            im4d_t = np.stack(im3d_chs, -1)
+            cycles.append(im4d_t)
         self.set_new(cycles)
         return self
 

@@ -16,6 +16,13 @@ def call_spots(roi: np.ndarray,
                q: float = 0.9,
                min_obj_size: int = 3,
                ) -> np.ndarray:
+    """
+    :param roi: Input image.
+    :param p: Local mask threshold. (0, 1)
+    :param percentile_size: Local region size.
+    :param q: Global mask threshold. (0, 1)
+    :param min_obj_size: Min object area size.
+    """
     dim = len(roi.shape)
     per = roi - ndi.percentile_filter(roi, p*100, percentile_size)
     th = np.quantile(roi, q)
