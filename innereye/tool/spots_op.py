@@ -1,8 +1,12 @@
 from itertools import repeat
 from pathos.multiprocessing import ProcessingPool as Pool
+
 from ..lib.log import print_arguments
 from ..lib.spots.cluster import merge_close_points_3d, merge_close_points_3d_cc
-from ..lib.spots.channel import channel_merge, channel_merge_slidez
+from ..lib.spots.channel import (
+    channel_merge, channel_merge_slidez, 
+    filter_multi_channel, filter_multi_channel_slide_z,
+)
 from .base import ChainTool, SpotsIO
 
 
@@ -76,6 +80,22 @@ class SpotsOp(ChainTool, SpotsIO):
                 coords[:, 2] = 0
                 new_spts.append(coords)
             spots.append(new_spts)
+        self.spots = spots
+        return self
+
+    def filter_multi_channel(self, radius: float=2, n_thresh: int=2):
+        """Filter out spots which has more than two channel neighbors"""
+        print_arguments(log.info)
+        spots = []
+        if self.z_mode == 'slide':
+            for spts in self.spots:
+                spts_ = filter_multi_channel_slide_z(spts, radius, n_thresh, self.n_workers)
+                spots.append(spts_)
+        else:
+            pool = Pool(ncpus=self.n_workers)
+            map_ = map if self.n_workers == 1 else pool.map
+            for spts_ in map_(filter_multi_channel, self.spots, repeat(radius), repeat(n_thresh)):
+                spots.append(spts_)
         self.spots = spots
         return self
 

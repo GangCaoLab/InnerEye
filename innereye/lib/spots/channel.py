@@ -103,11 +103,7 @@ def channel_merge(spots: t.List[np.ndarray],
     return results, combs
 
 
-def channel_merge_slidez(spots: t.List[np.ndarray],
-                         radius: int = 2,
-                         n_workers: int = 1,
-                         ) -> t.Tuple[t.List[np.ndarray],
-                                      t.List[t.List[int]]]:
+def split_by_z(spots: t.List[np.ndarray]) -> t.Tuple[t.List[np.ndarray], np.ndarray]:
     assert all([pts.shape[1] == 3 for pts in spots])
     zs = np.unique(np.hstack([pts[:, 2] for pts in spots]))
     spots_by_z = []
@@ -117,6 +113,27 @@ def channel_merge_slidez(spots: t.List[np.ndarray],
             in_layer = pts[pts[:, 2] == z][:, :2]
             spots_z.append(in_layer)
         spots_by_z.append(spots_z)
+    return spots_by_z, zs
+    
+
+def merge_by_z(res_by_z, zs) -> t.List[np.ndarray]:
+    merged = []  # merge by z
+    for z, res in zip(zs, res_by_z):
+        for idx, pts in enumerate(res):
+            pts_ = np.c_[pts, np.full(pts.shape[0], z)]
+            try:
+                merged[idx] = np.r_[merged[idx], pts_]
+            except IndexError:
+                merged.append(pts_)
+    return merged
+
+
+def channel_merge_slidez(spots: t.List[np.ndarray],
+                         radius: int = 2,
+                         n_workers: int = 1,
+                         ) -> t.Tuple[t.List[np.ndarray],
+                                      t.List[t.List[int]]]:
+    spots_by_z, zs = split_by_z(spots)
 
     # slide processing each z layer
     pool = Pool(ncpus=n_workers)
@@ -126,14 +143,7 @@ def channel_merge_slidez(spots: t.List[np.ndarray],
     for res, combs in map_(channel_merge, spots_by_z, repeat(radius)):
         res_by_z.append(res)
 
-    merged = []  # merge by z
-    for z, res in zip(zs, res_by_z):
-        for idx, pts in enumerate(res):
-            pts_ = np.c_[pts, np.full(pts.shape[0], z)]
-            try:
-                merged[idx] = np.r_[merged[idx], pts_]
-            except IndexError:
-                merged.append(pts_)
+    merged = merge_by_z(res_by_z, zs)
     return merged, combs
 
 
@@ -180,3 +190,46 @@ def channel_merge_kdtree(
         pts = ch[idx_unused]
         results.append(pts)
     return results, combs
+
+
+def filter_multi_channel(spots: t.List[np.ndarray], radius: float, n_thresh: int=2) -> t.List[np.ndarray]:
+    spots_ = []
+    for query_ix, pts in enumerate(spots):  # pts shape: [n, 3] or [n, 2]
+        other_channel_index = []
+        other_channel = []
+        for ix in range(len(spots)):
+            if ix == query_ix:
+                continue
+            other_channel.append(spots[ix])
+            other_channel_index.append(np.ones(spots[ix].shape[0])*ix)
+        ref_pts = np.concatenate(other_channel)
+        ref_index = np.concatenate(other_channel_index)
+        tree = KDTree(ref_pts)
+        ind_per_query = tree.query_radius(pts, radius)
+        mask_multi_c = np.array([
+            np.unique(ref_index[ind]).shape[0] >= n_thresh
+            for ind in ind_per_query
+        ])
+        new_pts = pts[~mask_multi_c]
+        spots_.append(new_pts)
+    return spots_
+
+
+def filter_multi_channel_slide_z(
+    spots: t.List[np.ndarray],
+    radius: float,
+    n_thresh: int=2,
+    n_workers: int = 1,
+    ) -> t.List[np.ndarray]:
+    spots_by_z, zs = split_by_z(spots)
+
+    # slide processing each z layer
+    pool = Pool(ncpus=n_workers)
+    map_ = map if n_workers <= 1 else pool.map
+    res_by_z = []
+    for res in map_(filter_multi_channel, spots_by_z, repeat(radius), repeat(n_thresh)):
+        res_by_z.append(res)
+
+    merged = merge_by_z(res_by_z, zs)
+    return merged
+

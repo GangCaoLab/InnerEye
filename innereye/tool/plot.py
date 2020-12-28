@@ -28,8 +28,8 @@ def marker_styles(cmap="hsv", seed=0):
         yield cmap_(random.random()), markers[ix % len(markers)]
         ix += 1
 
-def is_nonfilled_marker(m):
-    if m in ['+', 'x']:
+def is_filled_marker(m):
+    if m in ['+', 'x', 'o', '.']:
         return True
     else:
         return False
@@ -221,10 +221,11 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
-            if is_nonfilled_marker(m):
+            if is_filled_marker(m):
                 sh = ax.scatter(pts[:, 1], pts[:, 0],
                                 c=[c for _ in range(pts.shape[0])],
                                 marker=m, s=s,
+                                edgecolor='none',
                                 alpha=0.7,
                                 label=gene)
             else:
