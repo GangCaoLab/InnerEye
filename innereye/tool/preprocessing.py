@@ -162,5 +162,26 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         self.set_new(cycles)
         return self
 
+    def DoG(self, kw_dog={"low_sigma": 1, "high_sigma": 4}):
+        print_arguments(log.info)
+        import numpy as np
+        from skimage.filters import difference_of_gaussians
+        if isinstance(kw_dog, dict):
+            kw_dog = [kw_dog for _ in range(self.cycles[0].shape[-1])]
+        cycles = []
+        for im4d in self.cycles:
+            assert len(kw_dog) == im4d.shape[-1]
+            im3d_chs = []
+            for ixch in range(im4d.shape[-1]):
+                im3d_ch = im4d[:,:,:,ixch]
+                kw = kw_dog[ixch]
+                if kw is not None:
+                    im3d_ch = difference_of_gaussians(im3d_ch, **kw)
+                im3d_chs.append(im3d_ch)
+            im4d_t = np.stack(im3d_chs, -1)
+            cycles.append(im4d_t)
+        self.set_new(cycles)
+        return self
+
     read = ImgIO.read_img
     write = ImgIO.write_img
