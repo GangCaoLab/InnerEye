@@ -15,7 +15,18 @@ def func_for_slide(func: t.Callable, args: t.Tuple) -> t.Callable:
     """Construct the function for slide over whole image."""
     def wrap(img: np.ndarray,
              idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
-        spots = func(img, *args)
+
+        # split args to different channels
+        ix_ch = idx if not isinstance(idx, tuple) else idx[0]
+        args_ = []
+        for a in args:
+            if isinstance(a, list):
+                p = a[ix_ch]
+            else:
+                p = a
+            args_.append(p)
+        log.debug(f"Run spots calling function with args: {args_}")
+        spots = func(img, *args_)
         if spots.shape[1] <= 2:  # add z-axis to coordinates
             z = np.full((spots.shape[0], 1), idx[1])
             spots = np.c_[spots, z]

@@ -26,7 +26,7 @@ class DistGraphDecode(object):
         start_poses: t.List[t.List[int]] = []
         channels = []
         for chs in spots_:
-            pts = np.concatenate(chs)
+            pts = np.concatenate([ch for ch in chs if ch.shape[0] > 0])
             spots.append(pts)
             channel = np.zeros(pts.shape[0])
             pos = 0
