@@ -15,6 +15,7 @@ def call_spots(roi: np.ndarray,
                percentile_size: int = 15,
                q: float = 0.9,
                min_obj_size: int = 3,
+               return_blob: bool = False,
                ) -> np.ndarray:
     """
     :param roi: Input image.
@@ -36,6 +37,9 @@ def call_spots(roi: np.ndarray,
         se = np.ones((3, 3, 3))
     blob = blob & (ndi.convolve(blob.astype(np.int), se) > min_nn)
     blob = remove_small_objects(blob, min_size=min_obj_size)
-    spots = blob_to_spot(blob)
-    return spots
+    if return_blob:
+        return blob
+    else:
+        spots = blob_to_spot(blob)
+        return spots
 
