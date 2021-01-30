@@ -4,6 +4,7 @@ from logging import getLogger
 
 import numpy as np
 import SimpleITK as sitk
+import scipy.ndimage as ndi
 
 from .misc import get_img_2d, get_img_3d
 from .misc import slide_over_z, slide_over_ch
@@ -28,6 +29,7 @@ class SitkBasedRegistration(object):
                  ref_cycle: int = -1,
                  ref_channel: t.Union[int, str] = 'mean',
                  ref_z: t.Optional[t.Union[int, str]] = 'mean',
+                 ref_gaussian_sigma: t.Optional[float] = None,
                  elastix_parameter_map='affine'
                  ):
         self.cycles = cycles
@@ -39,6 +41,7 @@ class SitkBasedRegistration(object):
         else:
             self.dim = 2
             self.ref_z = ref_z
+        self.ref_gaussian_sigma = ref_gaussian_sigma
         self.transforms = None
         self.selx = sitk.ElastixImageFilter()
         try:
@@ -54,9 +57,12 @@ class SitkBasedRegistration(object):
 
     def fetch_specified(self, im4d: np.ndarray) -> np.ndarray:
         if self.dim == 3:
-            return get_img_3d(im4d, self.ref_channel)
+            im = get_img_3d(im4d, self.ref_channel)
         else:
-            return get_img_2d(im4d, self.ref_channel, self.ref_z)
+            im = get_img_2d(im4d, self.ref_channel, self.ref_z)
+        if not (self.ref_gaussian_sigma is None):
+            im = ndi.gaussian_filter(im, self.ref_gaussian_sigma)
+        return im
 
     def estimate_transform(self):
         ix_ref = self.ref_cycle

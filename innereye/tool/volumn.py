@@ -8,7 +8,7 @@ import napari
 
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
-from ..lib.img.misc import slide_over_ch
+from ..lib.img.misc import slide_over_ch, get_img_3d
 from .base import ChainTool, ImgIO, Resetable
 from .preprocessing import PreProcessing
 from logging import getLogger
@@ -52,7 +52,7 @@ class ViewMask3D(object):
             raise ValueError(f"Only support 3 and 4 dimension.")
         return m
 
-    def view3d_signal(self, ixcy=[0]):
+    def view3d_signal(self, ixcy=[0], ixch=[0,1,2,3], merge_ch=False):
         print_arguments(log.info)
         if not isinstance(ixcy, list):
             ixcy = [ixcy]
@@ -60,9 +60,16 @@ class ViewMask3D(object):
         channel_names = []
         for icy in ixcy:
             cy = self.cycles[icy]
-            cy4view = self.__roll_im_for_view(cy, dim=4)
-            for_view.append(cy4view)
-            channel_names.extend([f"cy:{icy} ch:{ich}" for ich in range(cy.shape[-1])])
+            if merge_ch:
+                imch = get_img_3d(cy, ixch)[:, :, :, np.newaxis]
+                cy4view = self.__roll_im_for_view(imch, dim=4)
+                for_view.append(cy4view)
+                channel_names.append(f"cy:{icy} ch:{ixch}")
+            else:
+                imch = cy[:,:,:,ixch]
+                cy4view = self.__roll_im_for_view(imch, dim=4)
+                for_view.append(cy4view)
+                channel_names.extend([f"cy:{icy} ch:{ich}" for ich in ixch])
         for_view = np.concatenate(for_view)
         napari.view_image(for_view, channel_axis=0, name=channel_names)
         return self

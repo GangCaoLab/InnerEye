@@ -31,7 +31,7 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
              z: t.Optional[t.Tuple] = None,
              ch: t.Optional[t.Tuple] = None,
              cy: t.Optional[t.Tuple] = None,
-             fixcy: t.Optional[t.List[int]] = None):
+             fixcy: t.Optional[t.Union[int, t.List[int]]] = None):
         """Crop image, pass-in tuple object represent the slice along
         this axis.
 
@@ -53,6 +53,8 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
             slice(*i) if isinstance(i, Iterable) else slice(i)
             for i in (x, y, z, ch, cy)]
         cycles = []
+        if not isinstance(fixcy, list):
+            fixcy = [fixcy]
         for ixcy, img in enumerate(self.cycles):
             if (fixcy is None) or (ixcy in fixcy):
                 img_ = img[sy, sx, sz, sch]
@@ -100,6 +102,29 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         self.set_new(new_cycles)
         return self
 
+    def resize_z(self, to="max"):
+        """Resize all cycles to same size in z-axis"""
+        print_arguments(log.info)
+        from skimage.transform import resize
+
+        sorted_cys = sorted(self.cycles, key=lambda im: im.shape[2])
+        if to == "max":
+            target = sorted_cys[-1]
+        elif to == "median":
+            target = sorted_cys[len(sorted_cys)//2]
+        else:
+            target = sorted_cys[0]
+        target_size = target.shape
+        target_ix = self.cycles.index(target)
+        cycles = []
+        for ixcy, cy in enumerate(self.cycles):
+            if ixcy == target_ix:
+                cycles.append(cy)
+            else:
+                cycles.append(resize(cy, target_size))
+        self.set_new(cycles)
+        return self
+
     def z_stack(self):
         """Stack along z-axis."""
         print_arguments(log.info)
@@ -116,8 +141,10 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         return self
 
     def registration(self,
-                     ref_cycle=-1, ref_channel='mean',
+                     ref_cycle=-1,
+                     ref_channel='mean',
                      ref_z='mean',
+                     ref_gaussian_sigma=None,
                      elastix_parameter_map='affine'):
         """Image registration, align images to the reference cycle."""
         from ..lib.img.registration import SitkBasedRegistration
