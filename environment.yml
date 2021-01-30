@@ -21,5 +21,3 @@ dependencies:
       - bioformats
       - numba
       - networkx
-      - pybind11
-      - probreg

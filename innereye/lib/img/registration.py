@@ -5,8 +5,8 @@ from logging import getLogger
 import numpy as np
 import SimpleITK as sitk
 
-from .misc import get_img_2d
-from .misc import slide_over_z
+from .misc import get_img_2d, get_img_3d
+from .misc import slide_over_z, slide_over_ch
 
 log = getLogger(__file__)
 
@@ -15,25 +15,30 @@ def get_elastix_log_dir():
     basedir = "./"
     names = os.listdir(basedir)
     ix = 0
-    name = lambda: f"elastix.log.{ix}"
+    name = lambda: f".elastix.log.{ix}"
     while name() in names: ix += 1
     os.mkdir(name())
     return name()
 
 
-class Registration2d(object):
+class SitkBasedRegistration(object):
 
     def __init__(self,
                  cycles: t.List[np.ndarray],
                  ref_cycle: int = -1,
                  ref_channel: t.Union[int, str] = 'mean',
-                 ref_z: t.Union[int, str] = 'mean',
+                 ref_z: t.Optional[t.Union[int, str]] = 'mean',
                  elastix_parameter_map='affine'
                  ):
         self.cycles = cycles
         self.ref_cycle = ref_cycle
         self.ref_channel = ref_channel
-        self.ref_z = ref_z
+        if ref_z is None:
+            self.dim = 3
+            self.ref_z = None
+        else:
+            self.dim = 2
+            self.ref_z = ref_z
         self.transforms = None
         self.selx = sitk.ElastixImageFilter()
         try:
@@ -47,20 +52,26 @@ class Registration2d(object):
         self.selx.SetOutputDirectory(elastix_log_dir)
         self.selx.LogToConsoleOff()
 
+    def fetch_specified(self, im4d: np.ndarray) -> np.ndarray:
+        if self.dim == 3:
+            return get_img_3d(im4d, self.ref_channel)
+        else:
+            return get_img_2d(im4d, self.ref_channel, self.ref_z)
+
     def estimate_transform(self):
         ix_ref = self.ref_cycle
         selx = self.selx
         ref_im4d = self.cycles[ix_ref]
-        ref_im2d = get_img_2d(ref_im4d, self.ref_channel, self.ref_z)
-        ref_itk = sitk.GetImageFromArray(ref_im2d)
+        ref_im = self.fetch_specified(ref_im4d)
+        ref_itk = sitk.GetImageFromArray(ref_im)
         selx.SetFixedImage(ref_itk)
         transforms = []
         for idx, im4d in enumerate(self.cycles):
             if (idx == ix_ref) or (idx == (len(self.cycles) + ix_ref)):
                 trans = None
             else:
-                im2d = get_img_2d(im4d, self.ref_channel, self.ref_z)
-                im_itk = sitk.GetImageFromArray(im2d)
+                im = self.fetch_specified(im4d)
+                im_itk = sitk.GetImageFromArray(im)
                 selx.SetMovingImage(im_itk)
                 selx.Execute()
                 trans = selx.GetTransformParameterMap()
@@ -75,10 +86,16 @@ class Registration2d(object):
                 res = im4d
             else:
                 trans = self.transforms[idx]
-                def proc_im2d(im2d, *args):
-                    im_itk = sitk.GetImageFromArray(im2d)
+                def proc_im(im, *args):
+                    im_itk = sitk.GetImageFromArray(im)
                     im_res = sitk.Transformix(im_itk, trans)
                     return sitk.GetArrayFromImage(im_res)
-                res = slide_over_z(im4d, proc_im2d, 1)
+                if self.dim == 2:
+                    res = slide_over_z(im4d, proc_im, 1)
+                else:
+                    res = slide_over_ch(im4d, proc_im, 1)
             aligned.append(res)
         return aligned
+
+
+

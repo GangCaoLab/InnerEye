@@ -7,3 +7,4 @@ notes/
 docs/_build
 .snakemake/
 .idea/
+.vscode/

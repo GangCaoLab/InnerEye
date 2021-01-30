@@ -16,12 +16,22 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         self.cycles = None
         Resetable.__init__(self, "cycles")
 
+    def print_shape(self):
+        print_arguments(log.info)
+        msg = ""
+        for ixcy, cy in enumerate(self.cycles):
+            shape = cy.shape
+            msg += f"cycle: {ixcy}, shape: {shape}"
+        log.info(msg)
+        return self
+
     def crop(self,
              x: t.Optional[t.Tuple] = None,
              y: t.Optional[t.Tuple] = None,
              z: t.Optional[t.Tuple] = None,
              ch: t.Optional[t.Tuple] = None,
-             cy: t.Optional[t.Tuple] = None):
+             cy: t.Optional[t.Tuple] = None,
+             fixcy: t.Optional[t.List[int]] = None):
         """Crop image, pass-in tuple object represent the slice along
         this axis.
 
@@ -35,13 +45,21 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         :param z: Slice tuple for z-axis.
         :param ch: Slice tuple for channel-axis.
         :param cy: Slice tuple for cycle-axis.
+        :param fixcy: Only process specified cycles.
         :return:
         """
         print_arguments(log.info)
         sx, sy, sz, sch, scy = [
             slice(*i) if isinstance(i, Iterable) else slice(i)
             for i in (x, y, z, ch, cy)]
-        cycles = [img[sy, sx, sz, sch] for img in self.cycles][scy]
+        cycles = []
+        for ixcy, img in enumerate(self.cycles):
+            if (fixcy is None) or (ixcy in fixcy):
+                img_ = img[sy, sx, sz, sch]
+            else:
+                img_ = img
+            cycles.append(img_)
+        cycles = cycles[scy]
         self.set_new(cycles)
         return self
 
@@ -102,10 +120,10 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
                      ref_z='mean',
                      elastix_parameter_map='affine'):
         """Image registration, align images to the reference cycle."""
-        from ..lib.img.registration import Registration2d
+        from ..lib.img.registration import SitkBasedRegistration
         print_arguments(log.info)
         args = local_arguments(keywords=False)
-        reg = Registration2d(self.cycles, *args)
+        reg = SitkBasedRegistration(self.cycles, *args)
         reg.estimate_transform()
         aligned = reg.apply()
         self.set_new(aligned)

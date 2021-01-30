@@ -42,11 +42,32 @@ def func_for_slide(func: t.Callable, args: t.Tuple) -> t.Callable:
 
 class ViewMask3D(object):
     @staticmethod
-    def __roll_im_for_view(im):
-        m = np.rollaxis(im, 2, 0)
+    def __roll_im_for_view(im, dim=3):
+        if dim == 3:
+            m = np.rollaxis(im, 2, 0)
+        elif dim == 4:
+            m = np.rollaxis(im, 3, 0)
+            m = np.rollaxis(m, 3, 1)
+        else:
+            raise ValueError(f"Only support 3 and 4 dimension.")
         return m
 
-    def view3d(self, ixcy=[0, 1], ixch=[0, 1]):
+    def view3d_signal(self, ixcy=[0]):
+        print_arguments(log.info)
+        if not isinstance(ixcy, list):
+            ixcy = [ixcy]
+        for_view = []
+        channel_names = []
+        for icy in ixcy:
+            cy = self.cycles[icy]
+            cy4view = self.__roll_im_for_view(cy, dim=4)
+            for_view.append(cy4view)
+            channel_names.extend([f"cy:{icy} ch:{ich}" for ich in range(cy.shape[-1])])
+        for_view = np.concatenate(for_view)
+        napari.view_image(for_view, channel_axis=0, name=channel_names)
+        return self
+
+    def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1]):
         print_arguments(log.info)
         if not isinstance(ixcy, list):
             ixcy = [ixcy]
@@ -98,4 +119,5 @@ class Puncta(PreProcessing, ViewMask3D):
             masks.append(blob)
         self.masks = masks
         return self
+
 
