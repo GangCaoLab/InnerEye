@@ -53,7 +53,7 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
             slice(*i) if isinstance(i, Iterable) else slice(i)
             for i in (x, y, z, ch, cy)]
         cycles = []
-        if not isinstance(fixcy, list):
+        if (fixcy is not None) and (not isinstance(fixcy, list)):
             fixcy = [fixcy]
         for ixcy, img in enumerate(self.cycles):
             if (fixcy is None) or (ixcy in fixcy):
@@ -107,15 +107,15 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         print_arguments(log.info)
         from skimage.transform import resize
 
-        sorted_cys = sorted(self.cycles, key=lambda im: im.shape[2])
+        sorted_cys = sorted(enumerate(self.cycles), key=lambda t: t[1].shape[2])
         if to == "max":
-            target = sorted_cys[-1]
+            ix = -1
         elif to == "median":
-            target = sorted_cys[len(sorted_cys)//2]
+            ix = len(sorted_cys)//2
         else:
-            target = sorted_cys[0]
+            ix = 0
+        target_ix, target = sorted_cys[ix]
         target_size = target.shape
-        target_ix = self.cycles.index(target)
         cycles = []
         for ixcy, cy in enumerate(self.cycles):
             if ixcy == target_ix:
@@ -225,6 +225,16 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
                 im3d_chs.append(im3d_ch)
             im4d_t = np.stack(im3d_chs, -1)
             cycles.append(im4d_t)
+        self.set_new(cycles)
+        return self
+
+    def add_general_channel(self):
+        print_arguments(log.info)
+        import numpy as np
+        cycles = []
+        for im4d in self.cycles:
+            new = np.concatenate([im4d, im4d.mean(axis=3)[:,:,:,np.newaxis]], axis=3)
+            cycles.append(new)
         self.set_new(cycles)
         return self
 
