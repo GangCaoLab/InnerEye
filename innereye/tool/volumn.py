@@ -17,7 +17,7 @@ from ..lib.spots.call.blob import call_spots as call_blob
 log = getLogger(__file__)
 
 
-def func_for_slide(func: t.Callable, args: t.Tuple) -> t.Callable:
+def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Callable:
     """Construct the function for slide over whole image."""
     def wrap(img: np.ndarray,
              idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
@@ -32,7 +32,10 @@ def func_for_slide(func: t.Callable, args: t.Tuple) -> t.Callable:
                 p = a
             args_.append(p)
         log.debug(f"Run blob call function with args: {args_}")
-        blobs = func(img, *args_)
+        if ix_ch in channels:  # run blob call only when channel specified.
+            blobs = func(img, *args_)
+        else:
+            blobs = img
         if blobs.shape[1] <= 2:  # add z-axis to coordinates
             z = np.full((blobs.shape[0], 1), idx[1])
             blobs = np.c_[blobs, z]
@@ -125,12 +128,15 @@ class Puncta(PreProcessing, ViewMask3D):
              percentile_size: int = 15,
              q: float = 0.9,
              min_obj_size: int = 3,
+             channels=None,
             ):
         print_arguments(log.info)
         masks = []
+        if channels is None:
+            channels = list(range(self.cycles[0].shape[-1]))
         def call_blob_(*args, return_blob=True):
             return call_blob(*args, return_blob=return_blob)
-        call_blob_ = func_for_slide(call_blob_, (p, percentile_size, q, min_obj_size))
+        call_blob_ = func_for_slide(call_blob_, (p, percentile_size, q, min_obj_size), channels)
         for img in self.cycles:
             blob = slide_over_ch(img, call_blob_, self.n_workers, stack=False)
             masks.append(blob)
