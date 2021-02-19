@@ -98,6 +98,16 @@ class ViewMask3D(object):
         napari.view_image(for_view, channel_axis=0, name=channel_names)
         return self
 
+    def view_mean_along_z(self):
+        print_arguments(log.info)
+        im = []
+        for icy, im4d in enumerate(self.cycles):
+            imcy = im4d.mean(axis=0).mean(axis=0).mean(axis=1)
+            im.append(imcy)
+        im = np.stack(im)
+        napari.view_image(im, name="mean along z")
+        return self
+
 
 class Puncta(PreProcessing, ViewMask3D):
     """Puncta is something like spots but keep original pixel/voxel"""

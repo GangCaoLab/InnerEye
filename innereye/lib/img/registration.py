@@ -1,6 +1,7 @@
 import os
 import typing as t
 from logging import getLogger
+import abc
 
 import numpy as np
 import SimpleITK as sitk
@@ -22,16 +23,14 @@ def get_elastix_log_dir():
     return name()
 
 
-class SitkBasedRegistration(object):
-
+class Registration(abc.ABC):
     def __init__(self,
                  cycles: t.List[np.ndarray],
                  ref_cycle: int = -1,
                  ref_channel: t.Union[int, str] = 'mean',
                  ref_z: t.Optional[t.Union[int, str]] = 'mean',
                  ref_gaussian_sigma: t.Optional[float] = None,
-                 elastix_parameter_map='affine'
-                 ):
+                ):
         self.cycles = cycles
         self.ref_cycle = ref_cycle
         self.ref_channel = ref_channel
@@ -43,6 +42,36 @@ class SitkBasedRegistration(object):
             self.ref_z = ref_z
         self.ref_gaussian_sigma = ref_gaussian_sigma
         self.transforms = None
+
+    def fetch_specified(self, im4d: np.ndarray) -> np.ndarray:
+        if self.dim == 3:
+            im = get_img_3d(im4d, self.ref_channel)
+        else:
+            im = get_img_2d(im4d, self.ref_channel, self.ref_z)
+        if not (self.ref_gaussian_sigma is None):
+            im = ndi.gaussian_filter(im, self.ref_gaussian_sigma)
+        return im
+
+    @abc.abstractmethod
+    def estimate_transform(self):
+        pass
+
+    @abc.abstractmethod
+    def apply(self):
+        pass
+
+
+class SitkBasedRegistration(Registration):
+
+    def __init__(self,
+                 cycles: t.List[np.ndarray],
+                 ref_cycle: int = -1,
+                 ref_channel: t.Union[int, str] = 'mean',
+                 ref_z: t.Optional[t.Union[int, str]] = 'mean',
+                 ref_gaussian_sigma: t.Optional[float] = None,
+                 elastix_parameter_map='affine'
+                 ):
+        super().__init__(cycles, ref_cycle, ref_channel, ref_z, ref_gaussian_sigma)
         self.selx = sitk.ElastixImageFilter()
         try:
             pm = sitk.GetDefaultParameterMap(elastix_parameter_map)
@@ -54,15 +83,6 @@ class SitkBasedRegistration(object):
         log.info(f"Redirect elastix logs to '{elastix_log_dir}'")
         self.selx.SetOutputDirectory(elastix_log_dir)
         self.selx.LogToConsoleOff()
-
-    def fetch_specified(self, im4d: np.ndarray) -> np.ndarray:
-        if self.dim == 3:
-            im = get_img_3d(im4d, self.ref_channel)
-        else:
-            im = get_img_2d(im4d, self.ref_channel, self.ref_z)
-        if not (self.ref_gaussian_sigma is None):
-            im = ndi.gaussian_filter(im, self.ref_gaussian_sigma)
-        return im
 
     def estimate_transform(self):
         ix_ref = self.ref_cycle
@@ -104,4 +124,24 @@ class SitkBasedRegistration(object):
         return aligned
 
 
+class MoveZ(Registration):
+    def __init__(self,
+                 cycles: t.List[np.ndarray],
+                 ref_cycle: int = -1,
+                 ref_channel: t.Union[int, str] = 'mean',
+                 ref_gaussian_sigma: t.Optional[float] = None,
+                 ):
+        for cy in cycles:  # all image should be volumetric(more than one z layer)
+            assert cy.shape[2] > 1
+        super().__init__(cycles, ref_cycle, ref_channel, None, ref_gaussian_sigma)
 
+    def estimate_transform(self):
+        ix_ref = self.ref_cycle
+        centers = []
+        for im4d in self.cycles:
+            im3d = self.fetch_specified(im4d)
+            mean_along_z = im3d.mean(axis=0)
+        self.transforms = centers
+
+    def apply(self) -> t.List[np.ndarray]:
+        pass
