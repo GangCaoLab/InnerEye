@@ -1,6 +1,7 @@
 from collections import Iterable
 import typing as t
 from itertools import repeat
+import importlib
 
 import numpy as np
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -31,15 +32,15 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Calla
             else:
                 p = a
             args_.append(p)
-        log.debug(f"Run blob call function with args: {args_}")
-        if ix_ch in channels:  # run blob call only when channel specified.
-            blobs = func(img, *args_)
+        log.debug(f"Run function with args: {args_}")
+        if ix_ch in channels:  # run only when channel specified.
+            res = func(img, *args_)
         else:
-            blobs = img
-        if blobs.shape[1] <= 2:  # add z-axis to coordinates
-            z = np.full((blobs.shape[0], 1), idx[1])
-            blobs = np.c_[blobs, z]
-        return blobs
+            res = img
+        if res.shape[1] <= 2:  # add z-axis to coordinates
+            z = np.full((res.shape[0], 1), idx[1])
+            res = np.c_[res, z]
+        return res
     return wrap
 
 
@@ -90,7 +91,7 @@ class ViewMask3D(object):
             mask_cy = self.masks[icy]
             for ich in ixch:
                 im3d_ch = im4d[:,:,:,ich]
-                mask_ch = mask_cy[ich]
+                mask_ch = mask_cy[:,:,:,ich]
                 im4view = self.__roll_im_for_view(im3d_ch)
                 for_view.append(im4view)
                 channel_names.append(f"signal cy:{icy} ch:{ich}")
@@ -112,8 +113,9 @@ class ViewMask3D(object):
         return self
 
 
-class Puncta(PreProcessing, ViewMask3D):
-    """Puncta is something like spots but keep original pixel/voxel"""
+class Volumn(PreProcessing, ViewMask3D):
+    """Deal with volumetric stuff.
+    Puncta is something like spots but keep original pixel/voxel"""
 
     def __init__(self,
                  n_workers: int = 1):
@@ -123,24 +125,67 @@ class Puncta(PreProcessing, ViewMask3D):
         self.masks = None
         Resetable.__init__(self, "cycles")
 
-    def blob(self, 
+    def add_merged_cycle(self, merge_channel=False):
+        print_arguments(log.info)
+        for ixcy in range(1, len(self.cycles)):
+            assert self.cycles[ixcy].shape == self.cycles[0].shape
+        merged = sum(self.cycles) / len(self.cycles)
+        if merge_channel:
+            merged = merged.mean(axis=3, keepdims=True)
+        self.cycles.append(merged)
+        return self
+
+    def call_mask(self, 
              p: float = 0.9,
              percentile_size: int = 15,
              q: float = 0.9,
              min_obj_size: int = 3,
+             cycles=None,
              channels=None,
             ):
         print_arguments(log.info)
         masks = []
         if channels is None:
             channels = list(range(self.cycles[0].shape[-1]))
+        if cycles is None:
+            cycles = list(range(len(self.cycles)))
         def call_blob_(*args, return_blob=True):
             return call_blob(*args, return_blob=return_blob)
         call_blob_ = func_for_slide(call_blob_, (p, percentile_size, q, min_obj_size), channels)
-        for img in self.cycles:
-            blob = slide_over_ch(img, call_blob_, self.n_workers, stack=False)
+        for ixcy, img in enumerate(self.cycles):
+            if ixcy in cycles:
+                blob = slide_over_ch(img, call_blob_, self.n_workers, stack=False)
+                blob = np.stack(blob, axis=-1)
+            else:
+                blob = img
             masks.append(blob)
         self.masks = masks
         return self
 
+    def mask_op(self,
+                func_name="erosion",
+                selm_shape="ball",
+                selm_radius=1,
+                cycles=None, channels=None
+               ):
+        mor = importlib.import_module("skimage.morphology")
+        print_arguments(log.info)
+        if channels is None:
+            channels = list(range(self.cycles[0].shape[-1]))
+        if cycles is None:
+            cycles = list(range(len(self.cycles)))
+        selm_func = getattr(mor, selm_shape)
+        selm = selm_func(selm_radius)
+        op_func = getattr(mor, func_name)
+        process = func_for_slide(op_func, (selm,), channels)
+        masks = []
+        for ixcy, img in enumerate(self.masks):
+            if ixcy in cycles:
+                res = slide_over_ch(img, process, self.n_workers, stack=False)
+                res = np.stack(res, axis=-1)
+            else:
+                res = img
+            masks.append(res)
+        self.masks = masks
+        return self
 
