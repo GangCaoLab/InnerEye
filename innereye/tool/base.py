@@ -3,7 +3,9 @@ from ..lib.io.h5 import read_cycles, write_cycles
 from ..lib.io.h5 import read_spots, write_spots, read_decode, write_decode
 from ..lib.io.h5 import read_cells, write_cells, read_assign, write_assign
 
+import typing as t
 from collections import OrderedDict as od
+from collections import deque
 import numpy as np
 
 from logging import getLogger
@@ -35,6 +37,27 @@ class ImgIO(object):
         """Clear memory"""
         print_arguments(log.info)
         del self.cycles
+        return self
+
+
+class MaskIO(object):
+    def read_mask(self, path: str):
+        """Load mask to memory."""
+        print_arguments(log.info)
+        self.masks = read_cycles(path)
+        self.dimensions = [img.shape for img in self.masks]
+        return self
+
+    def write_mask(self, path: str):
+        """Write back masks to disk."""
+        print_arguments(log.info)
+        write_cycles(path, self.masks)
+        return self
+
+    def clear_mask(self):
+        """Clear memory"""
+        print_arguments(log.info)
+        del self.masks
         return self
 
 
@@ -202,18 +225,37 @@ class CellsIO(object):
 
 
 class Resetable(object):
-    def __init__(self, attr_name: str):
-        self._attr_name = attr_name
-        self._old_attr = None
+    def __init__(self, attr_names: t.Union[str, t.List[str]], limit: int = 1):
+        if not isinstance(attr_names, list):
+            attr_names = [attr_names]
+        self._attr_names = attr_names
+        self._memory = {
+            n: deque(maxlen=limit) for n in attr_names
+        }
+    
+    def _check_name(self, name):
+        if name is None:
+            name = self._attr_names[0]
+        if name not in self._attr_names:
+            raise ValueError("name should in attr_names")
+        return name
 
-    def set_new(self, new):
-        self._old_attr = getattr(self, self._attr_name)
-        setattr(self, self._attr_name, new)
+    def set_new(self, new, name: t.Optional[str] = None):
+        name = self._check_name(name)
+        old_attr = getattr(self, name)
+        self._memory[name].append(old_attr)
+        setattr(self, name, new)
 
-    def reset(self):
-        setattr(self, self._attr_name, self._old_attr)
+    def reset(self, index: int = -1, name: t.Optional[str] = None):
+        name = self._check_name(name)
+        old_attr = self._memory[name][index]
+        setattr(self, name, old_attr)
         return self
 
-    def clear_old(self):
-        self._old_attr = None
-    
+    def clear_old(self, name: t.Optional[str] = None):
+        self._check_name(name)
+        names = self._attr_names if name is None else [name]
+        for n in names:
+            self._memory[n].clear()
+        return self
+

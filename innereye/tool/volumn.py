@@ -10,7 +10,7 @@ import napari
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
 from ..lib.img.misc import slide_over_ch, get_img_3d
-from .base import ChainTool, ImgIO, Resetable
+from .base import MaskIO, Resetable
 from .preprocessing import PreProcessing
 from logging import getLogger
 from ..lib.spots.call.blob import call_spots as call_blob
@@ -118,12 +118,13 @@ class Volumn(PreProcessing, ViewMask3D):
     Puncta is something like spots but keep original pixel/voxel"""
 
     def __init__(self,
-                 n_workers: int = 1):
+                 n_workers: int = 1,
+                 record_num: int = 2):
         print_arguments(log.info)
         self.n_workers = n_workers
         self.cycles = None
         self.masks = None
-        Resetable.__init__(self, "cycles")
+        Resetable.__init__(self, ["cycles", "masks"], limit=record_num)
 
     def add_merged_cycle(self, merge_channel=False):
         print_arguments(log.info)
@@ -132,7 +133,7 @@ class Volumn(PreProcessing, ViewMask3D):
         merged = sum(self.cycles) / len(self.cycles)
         if merge_channel:
             merged = merged.mean(axis=3, keepdims=True)
-        self.cycles.append(merged)
+        self.set_new(self.cycles + [merged], "cycles")
         return self
 
     def call_mask(self, 
@@ -159,7 +160,7 @@ class Volumn(PreProcessing, ViewMask3D):
             else:
                 blob = img
             masks.append(blob)
-        self.masks = masks
+        self.set_new(masks, "masks")
         return self
 
     def mask_op(self,
@@ -186,6 +187,6 @@ class Volumn(PreProcessing, ViewMask3D):
             else:
                 res = img
             masks.append(res)
-        self.masks = masks
+        self.set_new(masks, "masks")
         return self
 

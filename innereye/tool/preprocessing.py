@@ -12,9 +12,9 @@ log = getLogger(__file__)
 class PreProcessing(ChainTool, ImgIO, Resetable):
     """Image pre-processing"""
 
-    def __init__(self):
+    def __init__(self, record_num=2):
         self.cycles = None
-        Resetable.__init__(self, "cycles")
+        Resetable.__init__(self, "cycles", limit=record_num)
 
     def print_shape(self):
         print_arguments(log.info)
