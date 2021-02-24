@@ -78,28 +78,33 @@ class ViewMask3D(object):
         napari.view_image(for_view, channel_axis=0, name=channel_names)
         return self
 
-    def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1]):
+    def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1], label_mask=False):
         print_arguments(log.info)
+        from skimage.measure import label
         if not isinstance(ixcy, list):
             ixcy = [ixcy]
         if not isinstance(ixch, list):
             ixch = [ixch]
-        for_view = []
-        channel_names = []
-        for icy in ixcy:
-            im4d = self.cycles[icy]
-            mask_cy = self.masks[icy]
-            for ich in ixch:
-                im3d_ch = im4d[:,:,:,ich]
-                mask_ch = mask_cy[:,:,:,ich]
-                im4view = self.__roll_im_for_view(im3d_ch)
-                for_view.append(im4view)
-                channel_names.append(f"signal cy:{icy} ch:{ich}")
-                mask4view = self.__roll_im_for_view(mask_ch)
-                for_view.append(mask4view)
-                channel_names.append(f"mask cy:{icy} ch:{ich}")
-        for_view = np.stack(for_view)
-        napari.view_image(for_view, channel_axis=0, name=channel_names)
+        with napari.gui_qt():
+            imgs4view = []
+            channel_names = []
+            for icy in ixcy:
+                im4d = self.cycles[icy]
+                for ich in ixch:
+                    im3d_ch = im4d[:,:,:,ich]
+                    im4view = self.__roll_im_for_view(im3d_ch)
+                    imgs4view.append(im4view)
+                    channel_names.append(f"signal cy:{icy} ch:{ich}")
+            im4view = np.stack(imgs4view)
+            viewer = napari.view_image(im4view, name=channel_names, channel_axis=0)
+            for icy in ixcy:
+                mask_cy = self.masks[icy]
+                for ich in ixch:
+                    mask_ch = mask_cy[:,:,:,ich]
+                    mask4view = self.__roll_im_for_view(mask_ch)
+                    if label_mask:
+                        mask4view = label(mask4view)
+                    label_layer = viewer.add_labels(mask4view, name=f"mask cy:{icy} ch:{ich}")
         return self
 
     def view_mean_along_z(self):
@@ -113,7 +118,7 @@ class ViewMask3D(object):
         return self
 
 
-class Volumn(PreProcessing, ViewMask3D):
+class Volumn(PreProcessing, ViewMask3D, MaskIO):
     """Deal with volumetric stuff.
     Puncta is something like spots but keep original pixel/voxel"""
 
