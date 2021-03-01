@@ -10,6 +10,7 @@ import napari
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
 from ..lib.img.misc import slide_over_ch, get_img_3d
+from ..lib.spots.call.tophat_extrema import call_spots as tophat_extrema
 from .base import MaskIO, Resetable
 from .preprocessing import PreProcessing
 from logging import getLogger
@@ -36,10 +37,7 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Calla
         if ix_ch in channels:  # run only when channel specified.
             res = func(img, *args_)
         else:
-            res = img
-        if res.shape[1] <= 2:  # add z-axis to coordinates
-            z = np.full((res.shape[0], 1), idx[1])
-            res = np.c_[res, z]
+            res = None
         return res
     return wrap
 
@@ -78,7 +76,7 @@ class ViewMask3D(object):
         napari.view_image(for_view, channel_axis=0, name=channel_names)
         return self
 
-    def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1], label_mask=False):
+    def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1], label_mask=False, show_spots=False):
         print_arguments(log.info)
         from skimage.measure import label
         if not isinstance(ixcy, list):
@@ -105,6 +103,13 @@ class ViewMask3D(object):
                     if label_mask:
                         mask4view = label(mask4view)
                     label_layer = viewer.add_labels(mask4view, name=f"mask cy:{icy} ch:{ich}")
+                    if show_spots:
+                        im_spts = np.zeros(mask_ch.shape)
+                        s = self.spots[icy][ich]
+                        im_spts[s[:,0], s[:,1], s[:,2]] = 1
+                        im_spts4view = self.__roll_im_for_view(im_spts)
+                        label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
+                        
         return self
 
     def view_mean_along_z(self):
@@ -141,6 +146,13 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.set_new(self.cycles + [merged], "cycles")
         return self
 
+    def __expand_cycle_channel(self, cycles, channels):
+        if channels is None:
+            channels = list(range(self.cycles[0].shape[-1]))
+        if cycles is None:
+            cycles = list(range(len(self.cycles)))
+        return cycles, channels
+
     def call_mask(self, 
              p: float = 0.9,
              percentile_size: int = 15,
@@ -151,10 +163,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
             ):
         print_arguments(log.info)
         masks = []
-        if channels is None:
-            channels = list(range(self.cycles[0].shape[-1]))
-        if cycles is None:
-            cycles = list(range(len(self.cycles)))
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
         def call_blob_(*args, return_blob=True):
             return call_blob(*args, return_blob=return_blob)
         call_blob_ = func_for_slide(call_blob_, (p, percentile_size, q, min_obj_size), channels)
@@ -176,10 +185,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                ):
         mor = importlib.import_module("skimage.morphology")
         print_arguments(log.info)
-        if channels is None:
-            channels = list(range(self.cycles[0].shape[-1]))
-        if cycles is None:
-            cycles = list(range(len(self.cycles)))
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
         selm_func = getattr(mor, selm_shape)
         selm = selm_func(selm_radius)
         op_func = getattr(mor, func_name)
@@ -193,5 +199,20 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                 res = img
             masks.append(res)
         self.set_new(masks, "masks")
+        return self
+
+    def call_spots(self, h=0.1, q=None, cycles=None, channels=None):
+        """Call spots using tophat-filter + h_maxima method."""
+        print_arguments(log.info)
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
+        spots = []
+        process = func_for_slide(tophat_extrema, (h, q), channels)
+        for ixcy, img in enumerate(self.cycles):
+            if ixcy in cycles:
+                res = slide_over_ch(img, process, self.n_workers, stack=False)
+            else:
+                res = None
+            spots.append(res)
+        self.spots = spots
         return self
 

@@ -1,3 +1,4 @@
 {
-    "restructuredtext.confPath": "${workspaceFolder}/docs/source"
+    "restructuredtext.confPath": "${workspaceFolder}/docs/source",
+    "python.pythonPath": "/home/nanguage/S/miniconda3/envs/bioimage/bin/python"
 }
