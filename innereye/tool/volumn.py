@@ -23,7 +23,6 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Calla
     """Construct the function for slide over whole image."""
     def wrap(img: np.ndarray,
              idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
-
         # split args to different channels
         ix_ch = idx if not isinstance(idx, tuple) else idx[0]
         args_ = []
@@ -214,5 +213,41 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                 res = None
             spots.append(res)
         self.spots = spots
+        return self
+
+    def segmentate_signals(self, min_obj_size=5, cycles=None, channels=None):
+        """Segmentate signals by spots. Set segmentated label to masks"""
+        from skimage.segmentation import watershed
+        from skimage.measure import label
+        from skimage.morphology import remove_small_objects
+        print_arguments(log.info)
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
+        masks = []
+        for ixcy in range(len(self.cycles)):
+            img = self.cycles[ixcy]
+            mask = self.masks[ixcy]
+            spts = self.spots[ixcy]
+            if ixcy in cycles:
+                mask_chs = []
+                for ixch in range(img.shape[3]):
+                    mask_ch = mask[:,:,:,ixch]
+                    if ixch in channels:
+                        im_ch = img[:,:,:,ixch]
+                        s = spts[ixch]
+                        center_ch = np.zeros(im_ch.shape)
+                        center_ch[s[:,0],s[:,1],s[:,2]] = 1
+                        # remove centers outside mask
+                        center_ch[mask_ch == 0] = 0
+                        center_label = label(center_ch)
+                        seg_label = watershed(-im_ch, center_label, mask=mask_ch)
+                        seg_label = remove_small_objects(seg_label, min_obj_size)
+                        mask_chs.append(seg_label)
+                    else:
+                        mask_chs.append(mask_ch)
+                res = np.stack(mask_chs, axis=-1)
+            else:
+                res = mask
+            masks.append(res)
+        self.set_new(masks, "masks")
         return self
 
