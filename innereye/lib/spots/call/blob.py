@@ -2,6 +2,7 @@ import numpy as np
 import scipy.ndimage as ndi
 from skimage.morphology import remove_small_objects
 from skimage.measure import label, regionprops
+from skimage.filters.rank import percentile, maximum
 
 
 def blob_to_spot(blobs: np.ndarray) -> np.ndarray:
@@ -25,6 +26,7 @@ def call_spots(roi: np.ndarray,
     :param min_obj_size: Min object area size.
     """
     dim = len(roi.shape)
+    # change to filters.rank
     per = roi - ndi.percentile_filter(roi, p*100, percentile_size)
     th = np.quantile(roi, q)
     f = (per > 0) & (roi > th)

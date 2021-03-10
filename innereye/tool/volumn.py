@@ -83,32 +83,28 @@ class ViewMask3D(object):
         if not isinstance(ixch, list):
             ixch = [ixch]
         with napari.gui_qt():
-            imgs4view = []
-            channel_names = []
+            viewer = napari.Viewer()
             for icy in ixcy:
                 im4d = self.cycles[icy]
-                for ich in ixch:
-                    im3d_ch = im4d[:,:,:,ich]
-                    im4view = self.__roll_im_for_view(im3d_ch)
-                    imgs4view.append(im4view)
-                    channel_names.append(f"signal cy:{icy} ch:{ich}")
-            im4view = np.stack(imgs4view)
-            viewer = napari.view_image(im4view, name=channel_names, channel_axis=0)
-            for icy in ixcy:
                 mask_cy = self.masks[icy]
                 for ich in ixch:
+                    # add image layer
+                    im3d_ch = im4d[:,:,:,ich]
+                    im4view = self.__roll_im_for_view(im3d_ch)
+                    viewer.add_image(im4view, name=f"signal cy:{icy} ch:{ich}")
+                    # add mask label layer
                     mask_ch = mask_cy[:,:,:,ich]
                     mask4view = self.__roll_im_for_view(mask_ch)
                     if label_mask:
                         mask4view = label(mask4view)
                     label_layer = viewer.add_labels(mask4view, name=f"mask cy:{icy} ch:{ich}")
+                    # add spots label layer
                     if show_spots:
                         im_spts = np.zeros(mask_ch.shape)
                         s = self.spots[icy][ich]
                         im_spts[s[:,0], s[:,1], s[:,2]] = 1
                         im_spts4view = self.__roll_im_for_view(im_spts)
                         label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
-                        
         return self
 
     def view_mean_along_z(self):
@@ -133,6 +129,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.n_workers = n_workers
         self.cycles = None
         self.masks = None
+        self.segmentated_label = None
         Resetable.__init__(self, ["cycles", "masks"], limit=record_num)
 
     def add_merged_cycle(self, merge_channel=False):
@@ -242,6 +239,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                         seg_label = watershed(-im_ch, center_label, mask=mask_ch)
                         seg_label = remove_small_objects(seg_label, min_obj_size)
                         mask_chs.append(seg_label)
+                        self.segmentated_label = seg_label
                     else:
                         mask_chs.append(mask_ch)
                 res = np.stack(mask_chs, axis=-1)
@@ -249,5 +247,27 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                 res = mask
             masks.append(res)
         self.set_new(masks, "masks")
+        return self
+
+    def exposure_adjust(self,
+                        func_name="rescale_intensity",
+                        args=("image",),
+                        cycles=None, channels=None,
+                        ):
+        """Perfrom exposure adjustment."""
+        exp = importlib.import_module("skimage.exposure")
+        print_arguments(log.info)
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
+        adj_func = getattr(exp, func_name)
+        process = func_for_slide(adj_func, args, channels)
+        imgs = []
+        for ixcy, img in enumerate(self.cycles):
+            if ixcy in cycles:
+                res = slide_over_ch(img, process, self.n_workers, stack=False)
+                res = np.stack(res, axis=-1)
+            else:
+                res = img
+            imgs.append(res)
+        self.set_new(imgs, "cycles")
         return self
 
