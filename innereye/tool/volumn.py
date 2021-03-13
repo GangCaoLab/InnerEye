@@ -1,7 +1,8 @@
-from collections import Iterable
+from collections import Iterable, OrderedDict
 import typing as t
 from itertools import repeat
 import importlib
+from functools import lru_cache
 
 import numpy as np
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -19,7 +20,7 @@ from ..lib.spots.call.blob import call_spots as call_blob
 log = getLogger(__file__)
 
 
-def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Callable:
+def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List, return_none=False) -> t.Callable:
     """Construct the function for slide over whole image."""
     def wrap(img: np.ndarray,
              idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
@@ -36,7 +37,7 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List) -> t.Calla
         if ix_ch in channels:  # run only when channel specified.
             res = func(img, *args_)
         else:
-            res = None
+            res = None if return_none else img
         return res
     return wrap
 
@@ -129,7 +130,9 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.n_workers = n_workers
         self.cycles = None
         self.masks = None
-        self.segmentated_label = None
+        self.extra_imgs = {}
+        self.punctas = None
+        self.code2gene = None
         Resetable.__init__(self, ["cycles", "masks"], limit=record_num)
 
     def add_merged_cycle(self, merge_channel=False):
@@ -202,7 +205,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         print_arguments(log.info)
         cycles, channels = self.__expand_cycle_channel(cycles, channels)
         spots = []
-        process = func_for_slide(tophat_extrema, (h, q), channels)
+        process = func_for_slide(tophat_extrema, (h, q), channels, return_none=True)
         for ixcy, img in enumerate(self.cycles):
             if ixcy in cycles:
                 res = slide_over_ch(img, process, self.n_workers, stack=False)
@@ -239,7 +242,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
                         seg_label = watershed(-im_ch, center_label, mask=mask_ch)
                         seg_label = remove_small_objects(seg_label, min_obj_size)
                         mask_chs.append(seg_label)
-                        self.segmentated_label = seg_label
+                        self.extra_imgs['segmentated_label'] = seg_label
                     else:
                         mask_chs.append(mask_ch)
                 res = np.stack(mask_chs, axis=-1)
@@ -251,7 +254,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
 
     def exposure_adjust(self,
                         func_name="rescale_intensity",
-                        args=("image",),
+                        args=("image", (0,1)),
                         cycles=None, channels=None,
                         ):
         """Perfrom exposure adjustment."""
@@ -271,3 +274,120 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.set_new(imgs, "cycles")
         return self
 
+    def decode(self, cycles=[0,1,2], channels=[0,1,2,3], channel_names="ACGT", min_size=1):
+        """Run decode process on each segmentated blobs(punctas)."""
+        print_arguments(log.info)
+        label_img = self.extra_imgs['segmentated_label']
+        punctas = OrderedDict()
+        for lb_ix in range(1, int(label_img.max())):
+            idx = np.where(label_img == lb_ix)
+            p = Puncta(lb_ix, idx, channels, channel_names)
+            p.extract_pixels([self.cycles[i] for i in cycles])
+            if p.size >= min_size:
+                punctas[lb_ix] = p
+        self.punctas = punctas
+        return self
+
+    def parse_barcodes(self, path):
+        print_arguments(log.info)
+        code2gene = {}
+        with open(path) as f:
+            for line in f:
+                items = line.strip().split()
+                code2gene[items[0]] = items[1]
+        self.code2gene = code2gene
+        return self
+
+    def write_decode_res(self, path, val_thresh=0.05):
+        """Write decode results to file."""
+        print_arguments(log.info)
+        with open(path, 'w') as f:
+            f.write("id\tsize\tcenter\tchastity\tvalues\tcode\tgene\n")
+            for lb_id, p in self.punctas.items():
+                code = p.read_out(val_thresh)
+                items = [
+                    p.id,
+                    p.size,
+                    p.center,
+                    p.chastity,
+                    p.values,
+                    code,
+                    self.code2gene.get(code, "Unknow")
+                ]
+                outline = "\t".join([str(i) for i in items]) + "\n"
+                f.write(outline)
+        return self
+
+
+class Puncta(object):
+    def __init__(self, id_: int,
+                 img_idx: t.Tuple[np.ndarray, np.ndarray, np.ndarray],
+                 channels: t.List[int],
+                 channel_names: str,
+                 aggregate_method: str = "mean",
+                 ch_num_per_cy: int = 2,
+                 ):
+        self.id = id_
+        self.img_idx = img_idx
+        self.channels = channels
+        self.channel_names = channel_names
+        self.aggregate_method = aggregate_method
+        self.ch_num_per_cy = ch_num_per_cy
+        self.pixels = None
+
+    def extract_pixels(self, cycles: t.List[np.ndarray]):
+        pixels = []
+        for imcy in cycles:
+            pixels.append([])
+            for ixch in self.channels:
+                imch = imcy[:,:,:,ixch]
+                vals = imch[self.img_idx]
+                pixels[-1].append(vals)
+        self.pixels = pixels
+
+    def read_out(self, val_thresh=0.1):
+        codes = []
+        ch_num = self.ch_num_per_cy
+        ch_names = self.channel_names
+        for chs in self.values:
+            args = np.argsort(chs)[::-1][:ch_num]
+            sorted_chs = sorted(chs, reverse=True)[:ch_num]
+            if (max(sorted_chs) - min(sorted_chs)) >= val_thresh:
+                code = ch_names[args[0]]*ch_num
+            else:
+                code = "".join([ch_names[i] for i in args])
+            code = "".join(sorted(code))
+            codes.append(code)
+        codes = "".join(codes)
+        return codes
+
+    @property
+    def size(self):
+        return self.img_idx[0].shape[0]
+
+    @property
+    @lru_cache(maxsize=1)
+    def center(self):
+        return tuple([np.mean(i) for i in self.img_idx])
+
+    @property
+    @lru_cache(maxsize=1)
+    def values(self):
+        values = []
+        agg_func = eval(f"np.{self.aggregate_method}")
+        for chs in self.pixels:
+            values.append([])
+            for ch in chs:
+                values[-1].append(agg_func(ch))
+        return values
+
+    @property
+    @lru_cache(maxsize=1)
+    def chastity(self):
+        res = []
+        vals = self.values
+        for chs in vals:
+            sorted_chs = sorted(chs, reverse=True)
+            c = (sorted_chs[0] - sorted_chs[-1]) / (sorted_chs[self.ch_num_per_cy] - sorted_chs[-1])
+            res.append(c)
+        return res
