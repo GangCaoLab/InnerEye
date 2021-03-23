@@ -42,6 +42,13 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List, return_non
     return wrap
 
 
+def random_color():
+    import matplotlib.pyplot as plt
+    import random
+    cmap = plt.cm.get_cmap("hsv")
+    return cmap(random.randint(0, 100))
+
+
 class ViewMask3D(object):
     @staticmethod
     def __roll_im_for_view(im, dim=3):
@@ -58,6 +65,10 @@ class ViewMask3D(object):
         print_arguments(log.info)
         if not isinstance(ixcy, list):
             ixcy = [ixcy]
+        if not hasattr(self, "viewer"):
+            viewer = self.init_viewer()
+        else:
+            viewer = self.viewer
         for_view = []
         channel_names = []
         for icy in ixcy:
@@ -73,8 +84,13 @@ class ViewMask3D(object):
                 for_view.append(cy4view)
                 channel_names.extend([f"cy:{icy} ch:{ich}" for ich in ixch])
         for_view = np.concatenate(for_view)
-        napari.view_image(for_view, channel_axis=0, name=channel_names)
+        viewer.add_image(for_view, channel_axis=0, name=channel_names)
         return self
+
+    def init_viewer(self):
+        viewer = napari.Viewer()
+        self.viewer = viewer
+        return viewer
 
     def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1], label_mask=False, show_spots=False):
         print_arguments(log.info)
@@ -83,29 +99,31 @@ class ViewMask3D(object):
             ixcy = [ixcy]
         if not isinstance(ixch, list):
             ixch = [ixch]
-        with napari.gui_qt():
-            viewer = napari.Viewer()
-            for icy in ixcy:
-                im4d = self.cycles[icy]
-                mask_cy = self.masks[icy]
-                for ich in ixch:
-                    # add image layer
-                    im3d_ch = im4d[:,:,:,ich]
-                    im4view = self.__roll_im_for_view(im3d_ch)
-                    viewer.add_image(im4view, name=f"signal cy:{icy} ch:{ich}")
-                    # add mask label layer
-                    mask_ch = mask_cy[:,:,:,ich]
-                    mask4view = self.__roll_im_for_view(mask_ch)
-                    if label_mask:
-                        mask4view = label(mask4view)
-                    label_layer = viewer.add_labels(mask4view, name=f"mask cy:{icy} ch:{ich}")
-                    # add spots label layer
-                    if show_spots:
-                        im_spts = np.zeros(mask_ch.shape)
-                        s = self.spots[icy][ich]
-                        im_spts[s[:,0], s[:,1], s[:,2]] = 1
-                        im_spts4view = self.__roll_im_for_view(im_spts)
-                        label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
+        if not hasattr(self, "viewer"):
+            viewer = self.init_viewer()
+        else:
+            viewer = self.viewer
+        for icy in ixcy:
+            im4d = self.cycles[icy]
+            mask_cy = self.masks[icy]
+            for ich in ixch:
+                # add mask label layer
+                mask_ch = mask_cy[:,:,:,ich]
+                mask4view = self.__roll_im_for_view(mask_ch).astype(np.int)
+                if label_mask:
+                    mask4view = label(mask4view)
+                if mask4view.max() > 1:
+                    color = None
+                else:
+                    color = {i: random_color() for i in range(1,10)}
+                label_layer = viewer.add_labels(mask4view, color=color, name=f"mask cy:{icy} ch:{ich}")
+                # add spots label layer
+                if show_spots and hasattr(self, 'spots'):
+                    im_spts = np.zeros(mask_ch.shape)
+                    s = self.spots[icy][ich]
+                    im_spts[s[:,0], s[:,1], s[:,2]] = 1
+                    im_spts4view = self.__roll_im_for_view(im_spts)
+                    label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
         return self
 
     def view_mean_along_z(self):
@@ -116,6 +134,47 @@ class ViewMask3D(object):
             im.append(imcy)
         im = np.stack(im)
         napari.view_image(im, name="mean along z")
+        return self
+
+    def view3d_punctas(
+            self, text="{values}\n{code} {gene}",
+            point_size=1, text_size=8, text_color="green",
+            text_anchor="upper_left"
+            ):
+        print_arguments(log.info)
+        from skimage.measure import regionprops_table
+        pos, labels, vals, codes, genes = [[] for _ in range(5)]
+        for id_, p in self.punctas.items():
+            pos.append(p.center)
+            labels.append(id_)
+            vals.append([["%.2f"%v for v in l] for l in p.values])
+            codes.append(p.codes)
+            genes.append(p.gene)
+        properties = {
+            'label': np.array(labels),
+            'values': np.array(vals),
+            'code': np.array(codes),
+            'gene': np.array(genes)
+        }
+        text_params = {
+            'text': text,
+            'size': text_size,
+            'color': text_color,
+            'anchor': 'upper_left',
+        }
+        if not hasattr(self, "viewer"):
+            viewer = self.init_viewer()
+        else:
+            viewer = self.viewer
+        pos = np.array(pos)
+        pos = pos[:, [2,0,1]]
+        viewer.add_points(
+            pos,
+            text=text_params,
+            properties=properties,
+            size=point_size,
+            opacity=0.7
+        )
         return self
 
 
@@ -152,7 +211,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
             cycles = list(range(len(self.cycles)))
         return cycles, channels
 
-    def call_mask(self, 
+    def call_mask_blob(self, 
              p: float = 0.9,
              percentile_size: int = 15,
              q: float = 0.9,
@@ -173,6 +232,20 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
             else:
                 blob = img
             masks.append(blob)
+        self.set_new(masks, "masks")
+        return self
+
+    def call_mask_from_spots(self):
+        print_arguments(log.info)
+        masks = []
+        for ixcy, pts_cy in enumerate(self.spots):
+            im4d = self.cycles[ixcy]
+            mask_cy = np.full(im4d.shape, 0, dtype=np.int)
+            if pts_cy is not None:
+                for ixch, pts in enumerate(pts_cy):
+                    if pts is not None:
+                        mask_cy[pts[:,0],pts[:,1],pts[:,2],ixch] = 1
+            masks.append(mask_cy)
         self.set_new(masks, "masks")
         return self
 
@@ -274,6 +347,16 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.set_new(imgs, "cycles")
         return self
 
+    def parse_barcodes(self, path):
+        print_arguments(log.info)
+        code2gene = {}
+        with open(path) as f:
+            for line in f:
+                items = line.strip().split()
+                code2gene[items[0]] = items[1]
+        self.code2gene = code2gene
+        return self
+
     def decode(self, cycles=[0,1,2], channels=[0,1,2,3], channel_names="ACGT", min_size=1):
         """Run decode process on each segmentated blobs(punctas)."""
         print_arguments(log.info)
@@ -288,31 +371,29 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.punctas = punctas
         return self
 
-    def parse_barcodes(self, path):
+    def filter_punctas(self, size_limit=(1, 100), ):
+        """Filter called punctas."""
         print_arguments(log.info)
-        code2gene = {}
-        with open(path) as f:
-            for line in f:
-                items = line.strip().split()
-                code2gene[items[0]] = items[1]
-        self.code2gene = code2gene
         return self
 
     def write_decode_res(self, path, val_thresh=0.05):
         """Write decode results to file."""
         print_arguments(log.info)
         with open(path, 'w') as f:
-            f.write("id\tsize\tcenter\tchastity\tvalues\tcode\tgene\n")
+            f.write("id\tsize\tcenter\tchastity\tv1-v2\tv1-v4\tcode\tgene\tvalues\n")
             for lb_id, p in self.punctas.items():
                 code = p.read_out(val_thresh)
+                p.gene = self.code2gene.get(code, "Unknow")
                 items = [
                     p.id,
                     p.size,
                     p.center,
                     p.chastity,
-                    p.values,
+                    p.diff_v1_v2,
+                    p.diff_v1_v4,
                     code,
-                    self.code2gene.get(code, "Unknow")
+                    p.gene,
+                    p.values,
                 ]
                 outline = "\t".join([str(i) for i in items]) + "\n"
                 f.write(outline)
@@ -334,6 +415,8 @@ class Puncta(object):
         self.aggregate_method = aggregate_method
         self.ch_num_per_cy = ch_num_per_cy
         self.pixels = None
+        self.codes = None
+        self.gene = None
 
     def extract_pixels(self, cycles: t.List[np.ndarray]):
         pixels = []
@@ -359,6 +442,7 @@ class Puncta(object):
             code = "".join(sorted(code))
             codes.append(code)
         codes = "".join(codes)
+        self.codes = codes
         return codes
 
     @property
@@ -388,6 +472,27 @@ class Puncta(object):
         vals = self.values
         for chs in vals:
             sorted_chs = sorted(chs, reverse=True)
-            c = (sorted_chs[0] - sorted_chs[-1]) / (sorted_chs[self.ch_num_per_cy] - sorted_chs[-1])
+            d13 = (sorted_chs[0] - sorted_chs[-1])
+            c = d13 / (d13 + (sorted_chs[self.ch_num_per_cy] - sorted_chs[-1]))
             res.append(c)
+        return res
+
+    @property
+    @lru_cache(maxsize=1)
+    def diff_v1_v4(self):
+        res = []
+        vals = self.values
+        for chs in vals:
+            sorted_chs = sorted(chs, reverse=True)
+            res.append(sorted_chs[0] - sorted_chs[-1])
+        return res
+
+    @property
+    @lru_cache(maxsize=1)
+    def diff_v1_v2(self):
+        res = []
+        vals = self.values
+        for chs in vals:
+            sorted_chs = sorted(chs, reverse=True)
+            res.append(sorted_chs[0] - sorted_chs[1])
         return res
