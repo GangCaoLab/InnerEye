@@ -1,4 +1,5 @@
-from collections import Iterable, OrderedDict
+import random
+from collections import Iterable, OrderedDict, defaultdict
 import typing as t
 from itertools import repeat
 import importlib
@@ -43,13 +44,14 @@ def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List, return_non
 
 
 def random_color():
-    import matplotlib.pyplot as plt
-    import random
-    cmap = plt.cm.get_cmap("hsv")
-    return cmap(random.randint(0, 100))
+    color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+    return color
 
 
 class ViewMask3D(object):
+    def __init__(self):
+        self.gene2color = {"all": "white"}
+
     @staticmethod
     def __roll_im_for_view(im, dim=3):
         if dim == 3:
@@ -65,10 +67,7 @@ class ViewMask3D(object):
         print_arguments(log.info)
         if not isinstance(ixcy, list):
             ixcy = [ixcy]
-        if not hasattr(self, "viewer"):
-            viewer = self.init_viewer()
-        else:
-            viewer = self.viewer
+        viewer = self.get_viewer()
         for_view = []
         channel_names = []
         for icy in ixcy:
@@ -92,6 +91,12 @@ class ViewMask3D(object):
         self.viewer = viewer
         return viewer
 
+    def get_viewer(self):
+        if not hasattr(self, "viewer"):
+            return self.init_viewer()
+        else:
+            return self.viewer
+
     def view3d_mask(self, ixcy=[0, 1], ixch=[0, 1], label_mask=False, show_spots=False):
         print_arguments(log.info)
         from skimage.measure import label
@@ -99,10 +104,7 @@ class ViewMask3D(object):
             ixcy = [ixcy]
         if not isinstance(ixch, list):
             ixch = [ixch]
-        if not hasattr(self, "viewer"):
-            viewer = self.init_viewer()
-        else:
-            viewer = self.viewer
+        viewer = self.get_viewer()
         for icy in ixcy:
             im4d = self.cycles[icy]
             mask_cy = self.masks[icy]
@@ -136,45 +138,67 @@ class ViewMask3D(object):
         napari.view_image(im, name="mean along z")
         return self
 
+    def get_puncta_color(self, gene_name):
+        if gene_name in self.gene2color:
+            return self.gene2color[gene_name]
+        else:
+            color = random_color()
+            self.gene2color[gene_name] = color
+            return color
+
+    def set_gene2color_from_tsv(self, path):
+        with open(path) as f:
+            for line in f:
+                items = line.strip().split()
+                self.gene2color[items[0]] = items[1]
+
     def view3d_punctas(
             self, text="{values}\n{code} {gene}",
             point_size=1, text_size=8, text_color="green",
-            text_anchor="upper_left"
+            text_anchor="upper_left",
+            split_by_gene=False,
             ):
         print_arguments(log.info)
         from skimage.measure import regionprops_table
-        pos, labels, vals, codes, genes = [[] for _ in range(5)]
-        for id_, p in self.punctas.items():
-            pos.append(p.center)
-            labels.append(id_)
-            vals.append([["%.2f"%v for v in l] for l in p.values])
-            codes.append(p.codes)
-            genes.append(p.gene)
-        properties = {
-            'label': np.array(labels),
-            'values': np.array(vals),
-            'code': np.array(codes),
-            'gene': np.array(genes)
-        }
-        text_params = {
-            'text': text,
-            'size': text_size,
-            'color': text_color,
-            'anchor': 'upper_left',
-        }
-        if not hasattr(self, "viewer"):
-            viewer = self.init_viewer()
+        viewer = self.get_viewer()
+        punctas_group = defaultdict(list)
+        if split_by_gene:
+            for p in self.punctas.values():
+                punctas_group[p.gene].append(p)
         else:
-            viewer = self.viewer
-        pos = np.array(pos)
-        pos = pos[:, [2,0,1]]
-        viewer.add_points(
-            pos,
-            text=text_params,
-            properties=properties,
-            size=point_size,
-            opacity=0.7
-        )
+            punctas_group = {'all': list(self.punctas.values())}
+        for g, punctas in punctas_group.items():
+            pos, labels, vals, codes, genes = [[] for _ in range(5)]
+            for p in punctas:
+                pos.append(p.center)
+                labels.append(p.id)
+                vals.append([["%.2f"%v for v in l] for l in p.values])
+                codes.append(p.codes)
+                genes.append(p.gene)
+            properties = {
+                'label': np.array(labels),
+                'values': np.array(vals),
+                'code': np.array(codes),
+                'gene': np.array(genes)
+            }
+            text_params = {
+                'text': text,
+                'size': text_size,
+                'color': text_color,
+                'anchor': 'upper_left',
+            }
+            pos = np.array(pos)
+            pos = pos[:, [2,0,1]]
+            point_color = self.get_puncta_color(g)
+            viewer.add_points(
+                pos,
+                text=text_params,
+                properties=properties,
+                size=point_size,
+                opacity=0.7,
+                face_color=point_color,
+                name=g,
+            )
         return self
 
 
@@ -193,6 +217,7 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.punctas = None
         self.code2gene = None
         Resetable.__init__(self, ["cycles", "masks"], limit=record_num)
+        ViewMask3D.__init__(self)
 
     def add_merged_cycle(self, merge_channel=False):
         print_arguments(log.info)
