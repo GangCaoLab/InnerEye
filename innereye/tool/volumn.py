@@ -51,6 +51,7 @@ def random_color():
 class ViewMask3D(object):
     def __init__(self):
         self.gene2color = {"all": "white"}
+        self.viewer = None
 
     @staticmethod
     def __roll_im_for_view(im, dim=3):
@@ -92,7 +93,7 @@ class ViewMask3D(object):
         return viewer
 
     def get_viewer(self):
-        if not hasattr(self, "viewer"):
+        if self.viewer is None:
             return self.init_viewer()
         else:
             return self.viewer
@@ -396,9 +397,17 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.punctas = punctas
         return self
 
-    def filter_punctas(self, size_limit=(1, 100), ):
+    def filter_punctas(self, size_limit=(1, 100), thresh_chmax_intensity=0.1):
         """Filter called punctas."""
         print_arguments(log.info)
+        punctas = OrderedDict()
+        for id_, p in self.punctas.items():
+            if not (size_limit[0] <= p.size <= size_limit[1]):
+                continue
+            if not all([max(chs) >= thresh_chmax_intensity for chs in p.values]):
+                continue
+            punctas[id_] = p
+        self.punctas = punctas
         return self
 
     def write_decode_res(self, path, val_thresh=0.05):
