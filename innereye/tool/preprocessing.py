@@ -1,12 +1,37 @@
+import importlib
 from collections import Iterable
 import typing as t
+import numpy as np
 from ..lib.log import print_arguments
 from ..lib.misc import local_arguments
 from .base import ChainTool, ImgIO, Resetable
 from logging import getLogger
 from ..lib.img.transform import scale_to_255, bright_range_transform
+from ..lib.img.misc import slide_over_ch
 
 log = getLogger(__file__)
+
+
+def func_for_slide(func: t.Callable, args: t.Tuple, channels: t.List, return_none=False) -> t.Callable:
+    """Construct the function for slide over whole image."""
+    def wrap(img: np.ndarray,
+             idx: t.Union[int, t.Tuple[int, int]]) -> np.ndarray:
+        # split args to different channels
+        ix_ch = idx if not isinstance(idx, tuple) else idx[0]
+        args_ = []
+        for a in args:
+            if isinstance(a, list):
+                p = a[ix_ch]
+            else:
+                p = a
+            args_.append(p)
+        log.debug(f"Run function with args: {args_}")
+        if ix_ch in channels:  # run only when channel specified.
+            res = func(img, *args_)
+        else:
+            res = None if return_none else img
+        return res
+    return wrap
 
 
 class PreProcessing(ChainTool, ImgIO, Resetable):
@@ -228,15 +253,89 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
         self.set_new(cycles)
         return self
 
-    def add_general_channel(self):
+    def add_general_channel(self, channels=None):
         print_arguments(log.info)
         import numpy as np
         cycles = []
         for im4d in self.cycles:
-            new = np.concatenate([im4d, im4d.mean(axis=3)[:,:,:,np.newaxis]], axis=3)
+            if channels is None:
+                g_ch = im4d.mean(axis=3)
+            else:
+                g_ch = im4d[:,:,:,channels].mean(axis=3)
+            new = np.concatenate([im4d, g_ch[:,:,:,np.newaxis]], axis=3)
             cycles.append(new)
         self.set_new(cycles)
         return self
 
+    def quantile_transform(self):
+        print_arguments(log.info)
+        import numpy as np
+        from sklearn.preprocessing import quantile_transform
+        cycles = []
+        shape3d = self.cycles[0].shape[:-1]
+        for im4d in self.cycles:
+            chs = [im4d[:,:,:,i].ravel() for i in range(im4d.shape[-1])]
+            chs = np.stack(chs)
+            chs = quantile_transform(chs, axis=1)
+            chs = [chs[i].reshape(shape3d) for i in range(chs.shape[0])]
+            im4d_n = np.stack(chs, axis=-1)
+            cycles.append(im4d_n)
+        self.set_new(cycles)
+        return self
+
+    def __expand_cycle_channel(self, cycles, channels):
+        if channels is None:
+            channels = list(range(self.cycles[0].shape[-1]))
+        if cycles is None:
+            cycles = list(range(len(self.cycles)))
+        return cycles, channels
+
+    def exposure_adjust(self,
+                        func_name="rescale_intensity",
+                        args=("image", (0,1)),
+                        cycles=None, channels=None,
+                        ):
+        """Perfrom exposure adjustment."""
+        exp = importlib.import_module("skimage.exposure")
+        print_arguments(log.info)
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
+        adj_func = getattr(exp, func_name)
+        process = func_for_slide(adj_func, args, channels)
+        imgs = []
+        for ixcy, img in enumerate(self.cycles):
+            if ixcy in cycles:
+                res = slide_over_ch(img, process, self.n_workers, stack=False)
+                res = np.stack(res, axis=-1)
+            else:
+                res = img
+            imgs.append(res)
+        self.set_new(imgs, "cycles")
+        return self
+
+    def morphology_op(self,
+                func_name="erosion",
+                selm_shape="ball",
+                selm_radius=1,
+                cycles=None, channels=None,
+                target='masks',
+               ):
+        mor = importlib.import_module("skimage.morphology")
+        print_arguments(log.info)
+        cycles, channels = self.__expand_cycle_channel(cycles, channels)
+        selm_func = getattr(mor, selm_shape)
+        selm = selm_func(selm_radius)
+        op_func = getattr(mor, func_name)
+        process = func_for_slide(op_func, (selm,), channels)
+        results = []
+        for ixcy, img in enumerate(getattr(self, target)):
+            if ixcy in cycles:
+                res = slide_over_ch(img, process, self.n_workers, stack=False)
+                res = np.stack(res, axis=-1)
+            else:
+                res = img
+            results.append(res)
+        self.set_new(results, target)
+        return self
+    
     read = ImgIO.read_img
     write = ImgIO.write_img

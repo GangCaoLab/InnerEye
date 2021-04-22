@@ -37,11 +37,9 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
 
     def __init__(self,
                  ref_cycle: int = 0,
-                 channel: str = 'mean',
                  z_mode: str = 'slide',
                  n_workers: int = 1):
         self.ref_cycle = ref_cycle
-        self.channel = channel
         self.z_mode = z_mode
         self.n_workers = n_workers
         self.cycles = None
@@ -50,8 +48,10 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
         self.cell_assign = None
         self.code2gene = None
         self.coordinates = None
+        self.quanta_df = None
 
     def call_with_dist_watershed(self,
+            channel='mean',
             gaussian_sigma: int = 8,
             min_cc_size: int = 500,
             merge_radius: int = 10,
@@ -59,26 +59,27 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
         ):
         """Calculate all cell's center and mask via dist_watershed method."""
         print_arguments(log.info)
-        args = local_arguments(keywords=False)
+        args = local_arguments(keywords=False)[1:]
         im4d = self.cycles[self.ref_cycle]
         self.cells_center, self.cells_mask = func_for_slide_call_cell(
             otsu_watershed_2d, args,
-            im4d, self.channel, self.z_mode, self.n_workers
+            im4d, channel, self.z_mode, self.n_workers
         )
         return self
 
     def call_with_cc_center(self,
+            channel='mean',
             gaussian_sigma: int = 8,
             min_cc_size: int = 500,
             otsu_factor: float = 1.0,
         ):
         """Calculate all cell's center and mask via cc_center method."""
         print_arguments(log.info)
-        args = local_arguments(keywords=False)
+        args = local_arguments(keywords=False)[1:]
         im4d = self.cycles[self.ref_cycle]
         self.cells_center, self.cells_mask = func_for_slide_call_cell(
             otsu_cc_center_2d, args,
-            im4d, self.channel, self.z_mode, self.n_workers
+            im4d, channel, self.z_mode, self.n_workers
         )
         return self
 
@@ -120,10 +121,15 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
             raise NotImplementedError
         return self
 
-    def cell_quanta(self, path):
+    def cell_quanta(self, path=None):
         """Output cell quanta result table."""
         print_arguments(log.info)
-        cells = {str(tuple([float(c[i]) for i in range(3)])): {} for c in self.cells_center}
+        cells = {
+            str(tuple([float(c[i]) for i in range(3)])): {
+                g: 0 for g in self.code2gene.values()
+            }
+            for c in self.cells_center
+        }
         if self.z_mode == "slide":
             for g_idx, (_, gene) in enumerate(self.code2gene.items()):
                 col = []
@@ -138,6 +144,8 @@ class CellsOp(ChainTool, ImgIO, GenesIO, CellsIO):
         else:
             raise NotImplementedError
         df = pd.DataFrame(cells).T
-        sep = "," if path.endswith(".csv") else "\t"
-        df.to_csv(path, sep=sep)
+        self.quanta_df = df
+        if path:
+            sep = "," if path.endswith(".csv") else "\t"
+            df.to_csv(path, sep=sep)
         return self

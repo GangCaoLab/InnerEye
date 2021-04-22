@@ -4,7 +4,7 @@ from functools import reduce
 from operator import eq
 
 import numpy as np
-from skimage.morphology import watershed
+from skimage.segmentation import watershed
 from skimage.morphology import diamond, ball, dilation
 from skimage.measure import label
 from sklearn.neighbors import KDTree
@@ -67,6 +67,20 @@ def mask_sub(oriangal: np.ndarray,
     for m in masks:
         o = cc_sub(o, m)
     return o
+
+
+def spots_sub(spots_a: np.ndarray, spots_b: np.ndarray, radius: int):
+    assert spots_a.shape[1] == spots_b.shape[1]
+    dim = spots_a.shape[1]
+    assert 2 <= dim <= 3
+    shape = tuple([max([int(pts[:, i].max()) for pts in [spots_a, spots_b]]) + 1
+                   for i in range(dim)])
+    mask_a = coordinates_to_mask(spots_a, shape)
+    se = diamond(radius) if dim == 2 else ball(radius)
+    mask_a = dilation(mask_a, se)
+    mask_b = coordinates_to_mask(spots_b, shape)
+    res_mask = mask_sub(mask_a, [mask_b])
+    return cc_centroids(res_mask)
 
 
 def channel_merge(spots: t.List[np.ndarray],

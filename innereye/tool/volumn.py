@@ -115,11 +115,7 @@ class ViewMask3D(object):
                 mask4view = self.__roll_im_for_view(mask_ch).astype(np.int)
                 if label_mask:
                     mask4view = label(mask4view)
-                if mask4view.max() > 1:
-                    color = None
-                else:
-                    color = {i: random_color() for i in range(1,10)}
-                label_layer = viewer.add_labels(mask4view, color=color, name=f"mask cy:{icy} ch:{ich}")
+                label_layer = viewer.add_labels(mask4view, name=f"mask cy:{icy} ch:{ich}")
                 # add spots label layer
                 if show_spots and hasattr(self, 'spots'):
                     im_spts = np.zeros(mask_ch.shape)
@@ -127,6 +123,26 @@ class ViewMask3D(object):
                     im_spts[s[:,0], s[:,1], s[:,2]] = 1
                     im_spts4view = self.__roll_im_for_view(im_spts)
                     label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
+        return self
+
+    def view3d_spots(self, ixcy=[0], ixch=[0]):
+        print_arguments(log.info)
+        if not hasattr(self, 'spots'):
+            return
+        if not isinstance(ixcy, list):
+            ixcy = [ixcy]
+        if not isinstance(ixch, list):
+            ixch = [ixch]
+        viewer = self.get_viewer()
+        for icy in ixcy:
+            for ich in ixch:
+                im_ch = self.cycles[icy][:,:,:,ich]
+                im_spts = np.zeros(im_ch.shape)
+                s = self.spots[icy][ich]
+                im_spts[s[:,0], s[:,1], s[:,2]] = 1
+                im_spts4view = self.__roll_im_for_view(im_spts)
+                #color = {i: random_color() for i in range(1,10)}
+                label_layer = viewer.add_labels(im_spts4view, name=f"spots cy:{icy} ch:{ich}")
         return self
 
     def view_mean_along_z(self):
@@ -158,16 +174,33 @@ class ViewMask3D(object):
             point_size=1, text_size=8, text_color="green",
             text_anchor="upper_left",
             split_by_gene=False,
+            select=None,
+            exclude=None,
             ):
         print_arguments(log.info)
         from skimage.measure import regionprops_table
         viewer = self.get_viewer()
         punctas_group = defaultdict(list)
+        assert (select is None) or (exclude is None)
+
         if split_by_gene:
             for p in self.punctas.values():
+                if (select and (p.gene not in select)) and \
+                   (exclude and (p.gene in exclude)):
+                    continue
                 punctas_group[p.gene].append(p)
         else:
-            punctas_group = {'all': list(self.punctas.values())}
+            if select or exclued:
+                punctas_group = {
+                    'all':
+                    [
+                        p for p in self.punctas.values()
+                        if (select and (p.gene in select)) or (exclude and (p.gene not in exclude))
+                    ]
+                }
+            else:
+                punctas_group = {'all': list(self.punctas.values())}
+
         for g, punctas in punctas_group.items():
             pos, labels, vals, codes, genes = [[] for _ in range(5)]
             for p in punctas:
@@ -275,11 +308,25 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.set_new(masks, "masks")
         return self
 
-    def mask_op(self,
+    def merge_masks(self, channels=None):
+        print_arguments(log.info)
+        masks = []
+        for ixcy, mask in enumerate(self.masks):
+            if channels is None:
+                m_ch = np.logical_or.reduce(mask)
+            else:
+                m_ch = np.logical_or.reduce(mask[:,:,:,channels])
+            mask = np.concatenate([mask, m_ch], axis=3)
+            masks.append(mask)
+        self.set_new(masks, "masks")
+        return self
+
+    def morphology_op(self,
                 func_name="erosion",
                 selm_shape="ball",
                 selm_radius=1,
-                cycles=None, channels=None
+                cycles=None, channels=None,
+                target='masks',
                ):
         mor = importlib.import_module("skimage.morphology")
         print_arguments(log.info)
@@ -288,16 +335,24 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         selm = selm_func(selm_radius)
         op_func = getattr(mor, func_name)
         process = func_for_slide(op_func, (selm,), channels)
-        masks = []
-        for ixcy, img in enumerate(self.masks):
+        results = []
+        for ixcy, img in enumerate(getattr(self, target)):
             if ixcy in cycles:
                 res = slide_over_ch(img, process, self.n_workers, stack=False)
                 res = np.stack(res, axis=-1)
             else:
                 res = img
-            masks.append(res)
-        self.set_new(masks, "masks")
+            results.append(res)
+        self.set_new(results, target)
         return self
+    
+    def mask_op(self, *args, **kwargs):
+        kwargs.update({'target': 'masks'})
+        self.morphology_op(*args, **kwargs)
+
+    def img_op(self, *args, **kwargs):
+        kwargs.update({'target': 'cycles'})
+        self.morphology_op(*args, **kwargs)
 
     def call_spots(self, h=0.1, q=None, cycles=None, channels=None):
         """Call spots using tophat-filter + h_maxima method."""
@@ -397,34 +452,81 @@ class Volumn(PreProcessing, ViewMask3D, MaskIO):
         self.punctas = punctas
         return self
 
-    def filter_punctas(self, size_limit=(1, 100), thresh_chmax_intensity=0.1):
+    def extract_punctas_pixels(self, cycles=[0,1,2]):
+        print_arguments(log.info)
+        for p in self.punctas.values():
+            p.extract_pixels([self.cycles[i] for i in cycles])
+        return self
+
+    def barcode_correction(self, dist_thresh=1, n_possible=1):
+        """Correct barcode to clostest barcode."""
+        print_arguments(log.info)
+        from textdistance import hamming
+        from random import choice
+        def find_closest(s):
+            min_d = float('inf')
+            possible = []
+            for code in self.code2gene.keys():
+                d = hamming(s, code)
+                if d <= dist_thresh:
+                    min_d = min(d, min_d)
+                possible.append((d, code))
+            possible = [t for t in possible if t[0] == min_d]
+            return possible
+        for id_, p in self.punctas.items():
+            if p.gene == "Unknow":
+                codes = find_closest(p.codes)
+                if 0 < len(codes) <= n_possible:
+                    dist, code = codes[0]
+                    p.ori_codes = code
+                    p.codes = code
+                    p.gene = self.code2gene[code]
+                    p.dist = dist
+                else:
+                    p.dist = float('inf')
+            else:
+                p.dist = 0
+
+        return self
+
+    def filter_punctas(self,
+            size_limit=(1, 100),
+            thresh_chmax_intensity=None,
+            thresh_cycles_intensity_percent=None,
+            ):
         """Filter called punctas."""
         print_arguments(log.info)
         punctas = OrderedDict()
         for id_, p in self.punctas.items():
-            if not (size_limit[0] <= p.size <= size_limit[1]):
-                continue
-            if not all([max(chs) >= thresh_chmax_intensity for chs in p.values]):
-                continue
+            if size_limit is not None:
+                if not (size_limit[0] <= p.size <= size_limit[1]):
+                    continue
+            if thresh_chmax_intensity is not None:
+                if not all([max(chs) >= thresh_chmax_intensity for chs in p.values]):
+                    continue
+            if thresh_cycles_intensity_percent is not None:
+                cy_means = [sum(chs) for chs in p.values]
+                if min(cy_means) < sum(cy_means)*thresh_cycles_intensity_percent:
+                    continue
             punctas[id_] = p
         self.punctas = punctas
         return self
 
-    def write_decode_res(self, path, val_thresh=0.05):
+    def write_decode_res(self, path, val_thresh=0.05, percent_thresh=False, read_gene=True):
         """Write decode results to file."""
         print_arguments(log.info)
         with open(path, 'w') as f:
-            f.write("id\tsize\tcenter\tchastity\tv1-v2\tv1-v4\tcode\tgene\tvalues\n")
+            f.write("id\tsize\tcenter\tcode\tgene\tvalues\n")
             for lb_id, p in self.punctas.items():
-                code = p.read_out(val_thresh)
-                p.gene = self.code2gene.get(code, "Unknow")
+                if read_gene:
+                    code = p.read_out(val_thresh, percent_thresh)
+                    p.gene = self.code2gene.get(code, "Unknow")
+                else:
+                    code = p.codes
                 items = [
                     p.id,
                     p.size,
                     p.center,
-                    p.chastity,
-                    p.diff_v1_v2,
-                    p.diff_v1_v4,
                     code,
                     p.gene,
                     p.values,
@@ -462,18 +564,32 @@ class Puncta(object):
                 pixels[-1].append(vals)
         self.pixels = pixels
 
-    def read_out(self, val_thresh=0.1):
+    def read_out(self, val_thresh=0.1, percent_thresh=False):
         codes = []
         ch_num = self.ch_num_per_cy
         ch_names = self.channel_names
         for chs in self.values:
             args = np.argsort(chs)[::-1][:ch_num]
-            sorted_chs = sorted(chs, reverse=True)[:ch_num]
-            if (max(sorted_chs) - min(sorted_chs)) >= val_thresh:
-                code = ch_names[args[0]]*ch_num
+            sorted_chs = sorted(chs, reverse=True)
+            d1 = sorted_chs[0] - sorted_chs[1]
+            d2 = sorted_chs[1] - sorted_chs[2]
+            if d1 > d2:
+                code = ch_names[args[0]] * ch_num
             else:
-                code = "".join([ch_names[i] for i in args])
-            code = "".join(sorted(code))
+                code = "".join(sorted([ch_names[i] for i in args]))
+
+            #args = np.argsort(chs)[::-1][:ch_num]
+            #sorted_chs = sorted(chs, reverse=True)[:ch_num]
+            #if not percent_thresh:
+            #    diff = (max(sorted_chs) - min(sorted_chs))
+            #else:
+            #    diff = max(sorted_chs) / min(sorted_chs)
+            #if diff >= val_thresh:
+            #    code = ch_names[args[0]]*ch_num
+            #else:
+            #    code = "".join([ch_names[i] for i in args])
+            #code = "".join(sorted(code))
+
             codes.append(code)
         codes = "".join(codes)
         self.codes = codes
@@ -511,22 +627,3 @@ class Puncta(object):
             res.append(c)
         return res
 
-    @property
-    @lru_cache(maxsize=1)
-    def diff_v1_v4(self):
-        res = []
-        vals = self.values
-        for chs in vals:
-            sorted_chs = sorted(chs, reverse=True)
-            res.append(sorted_chs[0] - sorted_chs[-1])
-        return res
-
-    @property
-    @lru_cache(maxsize=1)
-    def diff_v1_v2(self):
-        res = []
-        vals = self.values
-        for chs in vals:
-            sorted_chs = sorted(chs, reverse=True)
-            res.append(sorted_chs[0] - sorted_chs[1])
-        return res

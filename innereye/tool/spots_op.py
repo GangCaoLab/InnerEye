@@ -70,7 +70,7 @@ class SpotsOp(ChainTool, SpotsIO):
         self.spots = spots
         return self
 
-    def z_stack(self):
+    def z_stack_spots(self):
         """Stack points along z-axis."""
         print_arguments(log.info)
         spots = []

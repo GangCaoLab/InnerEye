@@ -6,10 +6,15 @@ from .cells_op import CellsOp
 from .plot import Plot2d
 
 
-class Chain(PreProcessing, CallSpots, SpotsOp, Decode, CellsOp, Plot2d):
+class Plane(PreProcessing, CallSpots, SpotsOp, Decode, CellsOp, Plot2d):
     """Chain all steps together."""
     def __init__(self, z_mode='slide', n_workers=1):
-        super().__init__()
+        PreProcessing.__init__(self)
+        CallSpots.__init__(self)
+        SpotsOp.__init__(self)
+        Decode.__init__(self)
+        CellsOp.__init__(self)
+        Plot2d.__init__(self)
         self.z_mode = z_mode
         self.n_workers = n_workers
 
