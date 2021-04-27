@@ -171,7 +171,8 @@ class ViewMask3D(object):
 
     def view3d_punctas(
             self, text="{values}\n{code} {gene}",
-            point_size=1, text_size=8, text_color="green",
+            point_size=1, point_color=None,
+            text_size=8, text_color="green",
             text_anchor="upper_left",
             split_by_gene=False,
             select=None,
@@ -190,7 +191,7 @@ class ViewMask3D(object):
                     continue
                 punctas_group[p.gene].append(p)
         else:
-            if select or exclued:
+            if select or exclude:
                 punctas_group = {
                     'all':
                     [
@@ -223,7 +224,8 @@ class ViewMask3D(object):
             }
             pos = np.array(pos)
             pos = pos[:, [2,0,1]]
-            point_color = self.get_puncta_color(g)
+            if point_color is None:
+                point_color = self.get_puncta_color(g)
             viewer.add_points(
                 pos,
                 text=text_params,
