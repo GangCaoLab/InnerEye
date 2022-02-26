@@ -18,22 +18,13 @@ log = getLogger(__file__)
 
 
 def marker_styles(cmap="hsv", seed=0):
-    markers = [".", "v", "^", "<", ">",
-               "1", "2", "3", "4", "s",
-               "p", "P", "*", "+", "x"]
+    markers = ["v", "^", "<", ">", "o", 's']
     ix = 0
     cmap_ = cm.get_cmap(cmap)
     random.seed(seed)
     while True:
         yield cmap_(random.random()), markers[ix % len(markers)]
         ix += 1
-
-def is_filled_marker(m):
-    if m in ['+', 'x', 'o', '.']:
-        return True
-    else:
-        return False
-
 
 @dataclass
 class Img2dConf:
@@ -123,13 +114,13 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         self.confs.append(conf)
         return self
 
-    def plot(self, figpath=None, ret_fig=False, figsize=(10, 10), n_cols_max=2, legend_path=None, marker_size=None):
+    def plot(self, figpath=None, ret_fig=False, figsize=(10, 10), n_cols_max=2, legend_path=None, marker_size=None, fill_marker=False):
         print_arguments(log.info)
         if figpath:
-            fig = self._draw(figsize, n_cols_max, legend_path, marker_size)
+            fig = self._draw(figsize, n_cols_max, legend_path, marker_size, fill_marker)
             fig.savefig(figpath)
         elif ret_fig:
-            fig = self._draw(figsize, n_cols_max, legend_path, marker_size)
+            fig = self._draw(figsize, n_cols_max, legend_path, marker_size, fill_marker)
             return fig
         else:
             from ..lib.ui import MainWindow
@@ -139,7 +130,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             app.exec()
         return self
 
-    def _draw(self, figsize, n_cols_max, legend_path, marker_size=None):
+    def _draw(self, figsize, n_cols_max, legend_path, marker_size=None, fill_marker=False):
         self.figsize = figsize
         fig = plt.figure(figsize=figsize)
         n = len(self.confs)
@@ -160,10 +151,10 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             else:
                 ax = fig.add_subplot(gs[y, x])
             axes.append(ax)
-            self._draw_one(ax, self.imgs[i], self.confs[i], l_path, marker_size)
+            self._draw_one(ax, self.imgs[i], self.confs[i], l_path, marker_size, fill_marker=fill_marker)
         return fig
 
-    def _draw_one(self, ax, img, conf: Img2dConf, legend_path, marker_size=None):
+    def _draw_one(self, ax, img, conf: Img2dConf, legend_path, marker_size=None, fill_marker=False):
         if img is not None:
             ax.imshow(img, cmap='gray')
         if conf.show_cells_mask and (self.cells_mask is not None):
@@ -173,7 +164,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             for z in conf.z:
                 self._plot_cells_center(ax, z)
         if conf.show_genes and (self.code2gene is not None):
-            shapes, labels = self._plot_genes(ax, marker_size)
+            shapes, labels = self._plot_genes(ax, marker_size, fill_marker=fill_marker)
             self._plot_legend(ax, legend_path, shapes, labels)
             if self.cell_assign is not None:
                 for z in conf.z:
@@ -201,7 +192,7 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
         s = 5 * (self.figsize[0] * self.figsize[1]) // 100
         return s
 
-    def _plot_genes(self, ax, marker_size=None):
+    def _plot_genes(self, ax, marker_size=None, fill_marker=False):
         marker_gen = marker_styles()
         if marker_size:
             s = marker_size
@@ -221,11 +212,11 @@ class Plot2d(ChainTool, ImgIO, SpotsIO, GenesIO, CellsIO):
             pts = self.coordinates[ix][:, :2]
             if pts.shape[0] == 0:
                 continue
-            if is_filled_marker(m):
+            if fill_marker:
                 sh = ax.scatter(pts[:, 1], pts[:, 0],
                                 c=[c for _ in range(pts.shape[0])],
                                 marker=m, s=s,
-                                edgecolor='none',
+                                linewidths=0.5,
                                 alpha=0.7,
                                 label=gene)
             else:
