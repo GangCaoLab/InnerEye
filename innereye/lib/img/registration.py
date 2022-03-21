@@ -104,11 +104,12 @@ class SitkBasedRegistration(Registration):
             transforms.append(trans)
         self.transforms = transforms
 
-    def apply(self) -> t.List[np.ndarray]:
+    def apply(self, cycles=None) -> t.List[np.ndarray]:
         ix_ref = self.ref_cycle
         aligned = []
-        for idx, im4d in enumerate(self.cycles):
-            if (idx == ix_ref) or (idx == (len(self.cycles) + ix_ref)):
+        cycles = cycles or self.cycles
+        for idx, im4d in enumerate(cycles):
+            if (idx == ix_ref) or (idx == (len(cycles) + ix_ref)):
                 res = im4d
             else:
                 trans = self.transforms[idx]

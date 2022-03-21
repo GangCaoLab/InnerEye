@@ -1,4 +1,4 @@
-name: bioimage
+name: innereye
 channels:
   - anaconda
   - conda-forge
@@ -21,3 +21,4 @@ dependencies:
       - bioformats
       - numba
       - networkx
+      - editdistance

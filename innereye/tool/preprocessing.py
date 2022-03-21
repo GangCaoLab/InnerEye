@@ -170,15 +170,17 @@ class PreProcessing(ChainTool, ImgIO, Resetable):
                      ref_channel='mean',
                      ref_z='mean',
                      ref_gaussian_sigma=None,
-                     elastix_parameter_map='affine'):
+                     elastix_parameter_map='affine',
+                     estimate_transform_only=False):
         """Image registration, align images to the reference cycle."""
         from ..lib.img.registration import SitkBasedRegistration
         print_arguments(log.info)
-        args = local_arguments(keywords=False)
-        reg = SitkBasedRegistration(self.cycles, *args)
+        args = local_arguments(keywords=False)[:-1]
+        self.reg = reg = SitkBasedRegistration(self.cycles, *args)
         reg.estimate_transform()
-        aligned = reg.apply()
-        self.set_new(aligned)
+        if not estimate_transform_only:
+            aligned = reg.apply()
+            self.set_new(aligned)
         return self
 
     def scale_to_255(self):
